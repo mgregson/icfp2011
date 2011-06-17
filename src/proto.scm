@@ -28,9 +28,17 @@
   (> (vector-ref (vector-ref players player) n) 0))
 
 (define (is-slot-maxed? player n)
-  (< (vector-ref (vector-ref players player) n) 256))
+  (< (vector-ref (vector-ref players player) n) 65535))
 
 (define (inc-slot i)
+  (let
+      ((current-v (vector-ref (vector-ref players me) i)))
+  (if (and (is-slot-alive? me i) (< current-v 65535))
+      (vector-set! (vector-ref players me) i  (+ 1 current-v))
+      (+ 0 0);;null op otherwise
+  )
+  )
+  ;;return identity
   (lambda (x) x))
 
 (define (dec-slot i)
@@ -77,7 +85,7 @@
 (define inc (make-cardmurh "inc"
                            (numcardfun (lambda (i)
                                       (if (is-valid-slot-number? i)
-                                        (if (and (is-slot-alive? me i) (is-slot-maxed? me i))
+                                        (if (and (is-slot-alive? me i) (not (is-slot-maxed? me i)))
                                           (inc-slot me i)
                                           (lambda (i) i))
                                         (error "invalid slot #"))))))
