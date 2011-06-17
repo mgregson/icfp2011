@@ -10,7 +10,7 @@
   (set! s (+ 1 s))
   (cond
    ;;If its more 10k fuckit
-   ((<= 10000 s) (runningerror "too deep"))
+   ((<= 10000 s) (error "too deep"))
    (else fun)
    )
 )
