@@ -32,11 +32,22 @@
 
 (define test-interp-mode #f)
 
+(define current-stack-depth 0)
+
+(define (if-stack-depth f)
+  (lambda (x)
+    (set! current-stack-depth (+ 1 current-stack-depth))
+    (if (> current-stack-depth 1000) (lambda (i) (error "too deep"))
+        (f x)
+        )
+    )
+)
+
 (define I (make-card "I"
 					 (make-stack-item "I"
 									  func
 									  0
-									  (lambda (x) x))))
+									  (if-stack-depth (lambda (x) x)))))
 
 (define zero (make-card "zero"
 						(make-stack-item "zero"
@@ -48,11 +59,11 @@
 					 (make-stack-item "S"
 									  func
 									  0
-									  (lambda (f)
+									  (if-stack-depth (lambda (f)
 										(make-stack-item (string-append "S(" (stack-item-desc f) ")")
 														 func
 														 0
-														 (lambda (g)
+														 (if-stack-depth (lambda (g)
 														   (make-stack-item (string-append "S("
 																						   (stack-item-desc f)
 																						   ","
@@ -60,8 +71,8 @@
 																						   ")")
 																			func
 																			0
-																			(lambda (x)
-																			  ((stack-item-cont ((stack-item-cont f) x)) ((stack-item-cont g) x))))))))))
+																			(if-stack-depth (lambda (x)
+																			  ((stack-item-cont ((stack-item-cont f) x)) ((stack-item-cont g) x)))))))))))))
 
 
 (define start-state (lambda (ignored) (make-slot
@@ -160,6 +171,7 @@
 
 
 (define (read-action-type action)
+  (set! current-stack-depth 0)
   (cond
    ((string=? action "1")
     read-acts-card)
@@ -169,6 +181,7 @@
 
 (define (show-interesting-states p player)
   (printf "player: ~a\n" p)
+  (printf "current stack depth ~a\n" current-stack-depth)
   (vector-for-each (lambda (i slot)
                      (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
                                       (equal? (slot-vitality slot) 10000)))
