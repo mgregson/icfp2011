@@ -1,9 +1,20 @@
 (use srfi-9)
 (use extras)
-(define-record slot field vitality)
+(define-record-type :slot
+	(make-slot field vitality)
+	slot?
+	(field slot-field slot-field!)
+	(vitality slot-vitality slot-vitality!))
 ;;Don't really need type, but for debugging pandas
-(define-record error type)
-(define-record card-murh name thingy)
+(define-record-type :error 
+	(make-error type)
+	error?
+	(type error-type error-type!))
+(define-record-type :card 
+	(make-card name function)
+	card?
+	(name card-name card-name!)
+	(thiny card-function card-function!))
 
 (define s 0)
 (define (cardfun fun)
@@ -51,17 +62,15 @@
   )
   (lambda (x) x))
 
-(define-record cardmurh name function)
-
-(define I (make-cardmurh "I" (cardfun (lambda (i) i))))
-(define zero (make-cardmurh "zero" 0))
-(define succ (make-cardmurh "succ" 
+(define I (make-card "I" (cardfun (lambda (i) i))))
+(define zero (make-card "zero" 0))
+(define succ (make-card "succ" 
                        (numcardfun (lambda (n) 
                                   (cond
                                    ((< n 65535) (+ 1 n))
                                    (else 65535)
                                    )))))
-(define dbl (make-cardmurh "dbl"
+(define dbl (make-card "dbl"
                       (numcardfun (lambda (n)
                                     (cond
                                      ((< n 32768) (* n 2))
@@ -69,7 +78,7 @@
                                      ))
                                   )
                       ))
-(define get (make-cardmurh "get"
+(define get (make-card "get"
                       (numcardfun (lambda (i)
                                  (cond
                                   (((not (valid-slot-number? i)) (error "invalid slot #")))
@@ -78,8 +87,8 @@
                                   ;;If not alive something else
                                   (else (error "dead slot, cannot get"))
                       )))))
-(define put (make-cardmurh "put" (cardfun (lambda (i) (lambda (x) x)))))
-(define S (make-cardmurh "S" (cardfun (lambda (f) 
+(define put (make-card "put" (cardfun (lambda (i) (lambda (x) x)))))
+(define S (make-card "S" (cardfun (lambda (f) 
                                    (lambda (g) 
                                      (lambda (x)
                                        (if ((not (procedure? g))
@@ -88,15 +97,15 @@
                                                                       (y (g x)))
                                             (if (not (procedure? h)) (error "g x not fun") (h y))))))))))
 
-(define K (make-cardmurh "K" (cardfun (lambda (x y) x))))
-(define inc (make-cardmurh "inc"
+(define K (make-card "K" (cardfun (lambda (x y) x))))
+(define inc (make-card "inc"
                            (numcardfun (lambda (i)
                                       (if (is-valid-slot-number? i)
                                         (if (and (is-slot-alive? me i) (not (is-slot-maxed? me i)))
                                           (inc-slot me i)
                                           (lambda (i) i))
                                         (error "invalid slot #"))))))
-(define dec (make-cardmurh "dec"
+(define dec (make-card "dec"
                            (numcardfun (lambda (i)
                                          (let ((slot (- 255 i)))
                                       (if (is-valid-slot-number? slot)
@@ -116,7 +125,7 @@
           (lambda (x) x))))
       (error "invalid argument j to attack")))
 
-(define attack (make-cardmurh "attack"
+(define attack (make-card "attack"
                               (numcardfun (lambda (i)
                                          (lambda (j)
                                            (lambda (n)
@@ -137,7 +146,7 @@
           (lambda (x) x))))
       (error "invalid argument j to help")))
 
-(define help (make-cardmurh "help"
+(define help (make-card "help"
                               (numcardfun (lambda (i)
                                          (lambda (j)
                                            (lambda (n)
@@ -153,6 +162,8 @@
 
 (define start-state (make-slot '((lambda (i) i)) 10000))
 
+(define cards (list I zero succ dbl get put S K inc dec attack help copy revive zombie))
+
 (define players
   (make-vector
     2
@@ -160,6 +171,34 @@
 
 (define me 0)
 (define them 1)
+
+;  Given the name of a card and return the corresponding card record.
+(define (name-to-card name)
+	(car (filter
+				(lambda (x)
+					(string=? name (card-name x)))
+				cards)))
+
+;  Get the field value for the given player and slot.
+(define (player-field player slot)
+	(let ((player-vector (vector-ref players player)))
+		(slot-field (vector-ref player-vector slot))))
+
+;  Get the vitality value for the given player and slot.
+(define (player-vitality player slot)
+	(let ((player-vector (vector-ref players player)))
+		(slot-vitality (vector-ref player-vector slot))))
+
+;  Set the field value for the given player and slot.
+(define (player-field! player slot value)
+	(let ((player-vector (vector-ref players player)))
+		(slot-field! (vector-ref player-vector slot) value)))
+
+
+;  Set the vitality value for the given player and slot.
+(define (player-vitality! player slot value)
+	(let ((player-vector (vector-ref players player)))
+		(slot-vitality! (vector-ref player-vector slot) value)))
 
 (define (apply-card-to-slot card slot)
 	(display (string-append
@@ -183,12 +222,17 @@
 (define (astc slot card)
 	(apply-slot-to-card slot card))
 
+(define (do-self-turn)
+	(display "Do some shit"))
+
 (define (eval-card-to-slot card slot)
 	(display "Got card to slot")
+	(do-self-turn)
 	read-action-type)
 
 (define (eval-slot-to-card slot card)
 	(display "Got slot to card")
+	(do-self-turn)
 	read-action-type)
 
 (define (read-acts-card card)
