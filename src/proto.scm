@@ -1,8 +1,5 @@
-#!/usr/bin/env racket
-
-#lang racket
-
-(define-structure slot field vitality)
+(use srfi-9)
+(define-record slot field vitality)
 
 (define I "I")
 (define zero "zero")
@@ -20,12 +17,12 @@
 (define revive "revive")
 (define zombie "zombie")
 
-(define (apply-card-to-slot card slot)
+(define (apply-card-to-slot card slotv)
 	(display (string-append
 						"1\n"
 						card
 						"\n"
-						(number->string slot)
+						(number->string slotv)
 						"\nn")))
 
 (define (acts card slot)
@@ -62,11 +59,11 @@
 
 (define (read-action-type action)
 	(cond
-	 [(string=? action "1")
-		read-acts-card]
-	 [(string=? action "2")
-		read-astc-slot]
-	 [else (display "YOU FUCKING BASTARD") read-action-type]))
+	 ((string=? action "1")
+		read-acts-card)
+	 ((string=? action "2")
+		read-astc-slot)
+	 (else (display "YOU FUCKING BASTARD") read-action-type)))
 
 
 (define (go handler)
