@@ -7,6 +7,7 @@
   slot?
   (field slot-field slot-field!)
   (vitality slot-vitality slot-vitality!))
+
 ;;Don't really need type, but for debugging pandas
 (define-record-type :error 
   (error type)
@@ -61,16 +62,21 @@
 																			(lambda (x)
 																			  ((f x) (g x))))))))))
 
-(define start-state (make-slot
-					 (card-function I)
-					 10000))
+
+(define start-state (lambda (ignored) (make-slot
+                     (card-function I)
+                     10000)))
 
 (define cards (list I zero S))
 
+(define (makeplayervector) 
+  (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
+
 (define players
-  (make-vector
-   2
-   (make-vector 256 start-state)))
+  (vector
+   (makeplayervector)
+   (makeplayervector)
+   ))
 
 (define me 0)
 (define them 1)
@@ -116,11 +122,11 @@
 
 (define (apply-slot-to-card slot card)
   (display (string-append
-			"2\n"
-			(number->string slot)
-			"\n"
-			card
-			"\n")))
+            "2\n"
+            (number->string slot)
+            "\n"
+            card
+            "\n")))
 
 (define (astc slot card)
   (apply-slot-to-card slot card))
@@ -141,48 +147,49 @@
 
 (define (read-acts-card card)
   (lambda (slot)
-	(eval-card-to-slot (name-to-card card)
-					   (string->number slot))))
+    (eval-card-to-slot (name-to-card card)
+                       (string->number slot))))
 
 (define (read-astc-slot slot)
   (lambda (card)
-	(eval-slot-to-card (string->number slot)
-					   (name-to-card card))))
+    (eval-slot-to-card (string->number slot)
+                       (name-to-card card))))
 
 
 
 (define (read-action-type action)
   (cond
    ((string=? action "1")
-	read-acts-card)
+    read-acts-card)
    ((string=? action "2")
-	read-astc-slot)
+    read-astc-slot)
    (else (display "YOU FUCKING BASTARD") read-action-type)))
 
 (define (show-interesting-states p player)
   (printf "player: ~a\n" p)
   (vector-for-each (lambda (i slot)
-					 (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
-									  (equal? (slot-vitality slot) 10000)))
-							(printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
-				   player))
+                     (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
+                                      (equal? (slot-vitality slot) 10000)))
+                            (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
+                   player))
 
 (define (display-player-states)
   (vector-for-each show-interesting-states players))
 
 (define (go handler)
   (let ((next-handler (handler (read-line))))
-	(if test-interp-mode (display-player-states))
-	(go next-handler)))
+    (if test-interp-mode (display-player-states))
+    (go next-handler)))
 
 (define (main args)
   (cond ((not (equal? (length args) 1)) (printf "Usage: <fn> <player-number>\n") (exit 1))
-		(else
-		 (let ((config-me (car args)))
-		   (cond ((string=? config-me "0") (set! me 0) (set! them 1))
-				 ((string=? config-me "1") (set! me 1) (set! them 0))
-				 ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
-				 (else (display "DIE IN A FIRE") (exit 1)))
-		   (go read-action-type)))))
+        (else
+         (let ((config-me (car args)))
+           (cond ((string=? config-me "0") (set! me 0) (set! them 1))
+                 ((string=? config-me "1") (set! me 1) (set! them 0))
+                 ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
+                 (else (display "DIE IN A FIRE") (exit 1)))
+           (go read-action-type)))))
+
 
 (main (command-line-arguments))
