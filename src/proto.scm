@@ -2,6 +2,8 @@
 
 #lang racket
 
+(define-structure slot field vitality)
+
 (define I "I")
 (define zero "zero")
 (define succ "succ")
@@ -67,8 +69,8 @@
 	 [else (display "YOU FUCKING BASTARD") read-action-type]))
 
 
-(define (go [handler read-action-type])
+(define (go handler)
 	(let ((next-handler (handler (read-line))))
 		(go next-handler)))
 
-(go)
+(go read-action-type)
