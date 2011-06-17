@@ -17,6 +17,12 @@
 (define copy "copy")
 (define revive "revive")
 (define zombie "zombie")
+(define start-state (make-slot '(I) 10000))
+
+(define players
+  (make-vector
+    2
+    (make-vector 256 start-state)))
 
 (define me 0)
 (define them 1)
@@ -73,7 +79,6 @@
 (define (go handler)
 	(let ((next-handler (handler (read-line))))
 		(go next-handler)))
-
 
 (define (main args)
 	(cond ((not (equal? (length args) 1)) (printf "Usage: <fn> <player-number>\n") (exit 1))
