@@ -17,6 +17,7 @@
 (define copy "copy")
 (define revive "revive")
 (define zombie "zombie")
+
 (define start-state (make-slot '(I) 10000))
 
 (define players
