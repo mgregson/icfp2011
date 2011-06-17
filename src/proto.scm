@@ -62,16 +62,20 @@
                                                                             (lambda (x)
                                                                               ((f x) (g x))))))))))
 
-(define start-state (make-slot
+(define start-state (lambda (ignored) (make-slot
                      (card-function I)
-                     10000))
+                     10000)))
 
 (define cards (list I zero S))
 
+(define (makeplayervector) 
+  (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
+
 (define players
-  (make-vector
-   2
-   (make-vector 256 start-state)))
+  (vector
+   (makeplayervector)
+   (makeplayervector)
+   ))
 
 (define me 0)
 (define them 1)
