@@ -18,12 +18,12 @@
 (define revive "revive")
 (define zombie "zombie")
 
-(define (apply-card-to-slot card slotv)
+(define (apply-card-to-slot card slot)
 	(display (string-append
 						"1\n"
 						card
 						"\n"
-						(number->string slotv)
+						(number->string slot)
 						"\nn")))
 
 (define (acts card slot)
