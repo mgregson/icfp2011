@@ -18,6 +18,9 @@
 (define revive "revive")
 (define zombie "zombie")
 
+(define me 0)
+(define them 0)
+
 (define (apply-card-to-slot card slot)
 	(display (string-append
 						"1\n"
@@ -71,4 +74,14 @@
 	(let ((next-handler (handler (read-line))))
 		(go next-handler)))
 
-(go read-action-type)
+
+(define (main args)
+	(cond ((not (equal? (length args) 1)) (printf "Usage: <fn> <player-number>\n") (exit 1))
+				(else
+				 (let ((config-me (car args)))
+					 (cond ((string=? config-me "0") (set! me 0) (set! them 1))
+					((string=? config-me "1") (set! me 1) (set! them 0))
+					(else (display "DIE IN A FIRE") (exit 1))))
+				 (go read-action-type))))
+
+(main (command-line-arguments))
