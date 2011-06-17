@@ -15,7 +15,7 @@
    )
 )
 
-(define (valid-slot-number num)
+(define (valid-slot-number? num)
   (and (>= num 0) (< num 256)))
 
 (define (numcardfun fun)
@@ -26,6 +26,15 @@
 
 (define (is-slot-alive? player n)
   (> (vector-ref (vector-ref players player) n) 0))
+
+(define (is-slot-maxed? player n)
+  (< (vector-ref (vector-ref players player) n) 256))
+
+(define (inc-slot i)
+  (lambda (x) x))
+
+(define (dec-slot i)
+  (lambda (x) x))
 
 (define-record cardmurh name function)
 
@@ -48,7 +57,7 @@
 (define get (make-cardmurh "get"
                       (numcardfun (lambda (i)
                                  (cond
-                                  (((not (valid-slot-number i)) (error "invalid slot #")))
+                                  (((not (valid-slot-number? i)) (error "invalid slot #")))
                                   (((is-slot-alive? me i) (player-field me i)))
                                   ;;If alive something
                                   ;;If not alive something else
@@ -65,15 +74,68 @@
                                             (if (not (procedure? h)) (error "g x not fun") (h y))))))))))
 
 (define K (make-cardmurh "K" (cardfun (lambda (x y) x))))
-(define inc "inc" )
-(define dec "dec")
-(define attack "attack")
-(define help "help")
+(define inc (make-cardmurh "inc"
+                           (numcardfun (lambda (i)
+                                      (if (is-valid-slot-number? i)
+                                        (if (and (is-slot-alive? me i) (is-slot-maxed? me i))
+                                          (inc-slot me i)
+                                          (lambda (i) i))
+                                        (error "invalid slot #"))))))
+(define dec (make-cardmurh "dec"
+                           (numcardfun (lambda (i)
+                                      (if (is-valid-slot-number? i)
+                                        (if (is-slot-alive? me i)
+                                          (dec-slot me (- 255 i))
+                                          (lambda (i) i))
+                                        (error "invalid slot #"))))))
+
+(define (attack-slots i j n)
+  (player-vitality! me i (- (player-vitality me i) n))
+  (if (and (is-valid-slot-number? j) (numeric? j))
+    (let ((opp-vitality (player-vitality them j)))
+      (if (>= (- opp-vitality (* (/ 9 10) n)) 0)
+        (player-vitality! them j (- (player-vitality them j) (* (/ 9 10) n)))
+        (if (> opp-vitality 0)
+          (player-vitality! them j 0)
+          (lambda (x) x))))
+      (error "invalid argument j to attack")))
+
+(define attack (make-cardmurh "attack"
+                              (numcardfun (lambda (i)
+                                         (lambda (j)
+                                           (lambda (n)
+                                             (if (is-valid-slot-number? i)
+                                               (if (and (numeric? n) (> (player-vitality me i) n))
+                                                 (attack-slot i j n)
+                                                 (error "invalid argument i to attack"))
+                                               (error "invalid slot #"))))))))
+                                             
+(define (help-slots i j n)
+  (player-vitality! me i (- (player-vitality me i) n))
+  (if (and (is-valid-slot-number? j) (numeric? j))
+    (let ((opp-vitality (player-vitality me j)))
+      (if (< (+ opp-vitality (* (/ 11 10) n)) 65536)
+        (player-vitality! me j (+ (player-vitality me j) (* (/ 11 10) n)))
+        (if (< opp-vitality 65536)
+          (player-vitality! me j 65535)
+          (lambda (x) x))))
+      (error "invalid argument j to help")))
+
+(define help (make-cardmurh "help"
+                              (numcardfun (lambda (i)
+                                         (lambda (j)
+                                           (lambda (n)
+                                             (if (is-valid-slot-number? i)
+                                               (if (and (numeric? n) (> (player-vitality me i) n))
+                                                 (help-slots i j n)
+                                                 (error "invalid argument i to help"))
+                                               (error "invalid slot #"))))))))
+
 (define copy "copy")
 (define revive "revive")
 (define zombie "zombie")
 
-(define start-state (make-slot '(I) 10000))
+(define start-state (make-slot '((lambda (i) i)) 10000))
 
 (define players
   (make-vector
