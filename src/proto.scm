@@ -1,16 +1,63 @@
 (use srfi-9)
 (use extras)
 (define-record slot field vitality)
+;;Don't really need type, but for debugging pandas
+(define-record error type)
+(define-record card-murh name thingy)
 
-(define I "I")
-(define zero "zero")
-(define succ "succ")
-(define dbl "dbl")
-(define get "get")
-(define put "put")
-(define S "S")
-(define K "K")
-(define inc "inc")
+(define s 0)
+(define (cardfun fun)
+  (set! s (+ 1 s))
+  (cond
+   ;;If its more 10k fuckit
+   ((<= 10000 s) (runningerror "too deep"))
+   (else fun)
+   )
+)
+(define (numcardfun fun)
+  (cardfun (lambda (n)
+             (if (numeric? n) (fun n) (runningerror "not numeric"))
+             ))
+)
+
+(define-record cardmurh name function)
+
+(define I (make-cardmurh "I" (cardfun (lambda (i) i))))
+(define zero (make-cardmurh "zero" 0))
+(define succ (make-cardmurh "succ" 
+                       (numcardfun (lambda (n) 
+                                  (cond
+                                   ((< n 65535) (+ 1 n))
+                                   (else 65535)
+                                   )))))
+(define dbl (make-cardmurh "dbl"
+                      (numcardfun (lambda (n)
+                                    (cond
+                                     ((< n 32768) (* n 2))
+                                     (else 65535)
+                                     ))
+                                  )
+                      ))
+(define get (make-cardmurh "get"
+                      (cardfun (lambda (i)
+                                 (cond
+                                  (((not (valid-slot-number i)) (error "invalid slot #")))
+                                  ;;If alive something
+                                  ;;If not alive something else
+                                  (else (error "bah"))
+                      )))))
+(define put (make-cardmurh "put" (cardfun (lambda (i) (lambda (x) x)))))
+(define S (make-cardmurh "S" (cardfun (lambda (f) 
+                                   (lambda (g) 
+                                     (lambda (x)
+                                       (if ((not (procedure? g))
+                                            (not (procedure? f))) (let
+                                                                      ((h (f x))
+                                                                      (y (g x)))
+                                            (if (not (procedure? h)) (error "g x not fun") (h y))))))))))
+
+(define K (make-cardmurh "K" (cardfun (lambda (x y) x))))
+(define inc "inc" )
 (define dec "dec")
 (define attack "attack")
 (define help "help")
