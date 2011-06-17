@@ -1,5 +1,7 @@
 (use srfi-9)
+(use srfi-1)
 (use extras)
+(use vector-lib)
 (define-record-type :slot
 	(make-slot field vitality)
 	slot?
@@ -14,155 +16,56 @@
 	(make-card name function)
 	card?
 	(name card-name card-name!)
-	(thiny card-function card-function!))
+	(function card-function card-function!))
 
-(define s 0)
-(define (cardfun fun)
-  (set! s (+ 1 s))
-  (cond
-   ;;If its more 10k fuckit
-   ((<= 10000 s) (error "too deep"))
-   (else fun)
-   )
-)
+(define-record-type :stack-item
+	(make-stack-item desc type depth cont)
+	stack-item?
+	(desc stack-item-desc stack-item-desc!)
+	(type stack-item-type stack-item-type!)
+	(depth stack-item-depth stack-item-depth!)
+	(cont stack-item-cont stack-item-cont!))
 
-(define (valid-slot-number? num)
-  (and (>= num 0) (< num 256)))
+(define func "function")
+(define val "value")
 
-(define (numcardfun fun)
-  (cardfun (lambda (n)
-             (if (numeric? n) (fun n) (error "not numeric"))
-             ))
-)
+(define test-interp-mode #f)
 
-(define (is-slot-alive? player n)
-  (> (vector-ref (vector-ref players player) n) 0))
+(define I (make-card "I"
+										 (make-stack-item "I"
+																			func
+																			0
+																			(lambda (x) x))))
 
-(define (is-slot-maxed? player n)
-  (< (vector-ref (vector-ref players player) n) 65535))
+(define zero (make-card "zero"
+												(make-stack-item "zero"
+																				 val
+																				 0
+																				 0)))
+(define S (make-card "S"
+										 (make-stack-item "S"
+																			func
+																			0
+																			(lambda (f)
+																				(make-stack-item (string-append "S(" (stack-item-desc f) ")")
+																												 func
+																												 0
+																												 (lambda (g)
+																													 (make-stack-item (string-append "S("
+																																													 (stack-item-desc f)
+																																													 ","
+																																													 (stack-item-desc g)
+																																													 ")")
+																																						func
+																																						0
+																																						(lambda (x)
+																																							((f x) (g x))))))))))
 
-(define (inc-slot i)
-  (let
-      ((current-v (vector-ref (vector-ref players me) i)))
-  (if (and (is-slot-alive? me i) (< current-v 65535))
-      (vector-set! (vector-ref players me) i  (+ 1 current-v))
-      (+ 0 0);;null op otherwise
-  )
-  )
-  ;;return identity
-  (lambda (x) x))
+(define start-state (make-slot
+										 (card-function I)
+										 10000))
 
-(define (dec-slot i)
-  (let
-      ((current-v (vector-ref (vector-ref players them) i)))
-  (if (and (is-slot-alive? them i) (> current-v 0))
-      (vector-set! (vector-ref players me) i  (- current-v 1))
-      (+ 0 0);;null op otherwise
-  )
-  )
-  (lambda (x) x))
-
-(define I (make-card "I" (cardfun (lambda (i) i))))
-(define zero (make-card "zero" 0))
-(define succ (make-card "succ" 
-                       (numcardfun (lambda (n) 
-                                  (cond
-                                   ((< n 65535) (+ 1 n))
-                                   (else 65535)
-                                   )))))
-(define dbl (make-card "dbl"
-                      (numcardfun (lambda (n)
-                                    (cond
-                                     ((< n 32768) (* n 2))
-                                     (else 65535)
-                                     ))
-                                  )
-                      ))
-(define get (make-card "get"
-                      (numcardfun (lambda (i)
-                                 (cond
-                                  (((not (valid-slot-number? i)) (error "invalid slot #")))
-                                  (((is-slot-alive? me i) (player-field me i)))
-                                  ;;If alive something
-                                  ;;If not alive something else
-                                  (else (error "dead slot, cannot get"))
-                      )))))
-(define put (make-card "put" (cardfun (lambda (i) (lambda (x) x)))))
-(define S (make-card "S" (cardfun (lambda (f) 
-                                   (lambda (g) 
-                                     (lambda (x)
-                                       (if ((not (procedure? g))
-                                            (not (procedure? f))) (let
-                                                                      ((h (f x))
-                                                                      (y (g x)))
-                                            (if (not (procedure? h)) (error "g x not fun") (h y))))))))))
-
-(define K (make-card "K" (cardfun (lambda (x y) x))))
-(define inc (make-card "inc"
-                           (numcardfun (lambda (i)
-                                      (if (is-valid-slot-number? i)
-                                        (if (and (is-slot-alive? me i) (not (is-slot-maxed? me i)))
-                                          (inc-slot me i)
-                                          (lambda (i) i))
-                                        (error "invalid slot #"))))))
-(define dec (make-card "dec"
-                           (numcardfun (lambda (i)
-                                         (let ((slot (- 255 i)))
-                                      (if (is-valid-slot-number? slot)
-                                        (if (is-slot-alive? them slot)
-                                          (dec-slot them slot)
-                                          (lambda (x) x)))
-                                      (error "invalid slot #"))))))
-
-(define (attack-slots i j n)
-  (player-vitality! me i (- (player-vitality me i) n))
-  (if (and (is-valid-slot-number? j) (numeric? j))
-    (let ((opp-vitality (player-vitality them j)))
-      (if (>= (- opp-vitality (* (/ 9 10) n)) 0)
-        (player-vitality! them j (- (player-vitality them j) (* (/ 9 10) n)))
-        (if (> opp-vitality 0)
-          (player-vitality! them j 0)
-          (lambda (x) x))))
-      (error "invalid argument j to attack")))
-
-(define attack (make-card "attack"
-                              (numcardfun (lambda (i)
-                                         (lambda (j)
-                                           (lambda (n)
-                                             (if (is-valid-slot-number? i)
-                                               (if (and (numeric? n) (> (player-vitality me i) n))
-                                                 (attack-slot i j n)
-                                                 (error "invalid argument i to attack"))
-                                               (error "invalid slot #"))))))))
-                                             
-(define (help-slots i j n)
-  (player-vitality! me i (- (player-vitality me i) n))
-  (if (and (is-valid-slot-number? j) (numeric? j))
-    (let ((opp-vitality (player-vitality me j)))
-      (if (< (+ opp-vitality (* (/ 11 10) n)) 65536)
-        (player-vitality! me j (+ (player-vitality me j) (* (/ 11 10) n)))
-        (if (< opp-vitality 65536)
-          (player-vitality! me j 65535)
-          (lambda (x) x))))
-      (error "invalid argument j to help")))
-
-(define help (make-card "help"
-                              (numcardfun (lambda (i)
-                                         (lambda (j)
-                                           (lambda (n)
-                                             (if (is-valid-slot-number? i)
-                                               (if (and (numeric? n) (> (player-vitality me i) n))
-                                                 (help-slots i j n)
-                                                 (error "invalid argument i to help"))
-                                               (error "invalid slot #"))))))))
-
-(define copy "copy")
-(define revive "revive")
-(define zombie "zombie")
-
-(define start-state (make-slot '((lambda (i) i)) 10000))
-
-(define cards (list I zero succ dbl get put S K inc dec attack help copy revive zombie))
+(define cards (list I zero S))
 
 (define players
   (make-vector
@@ -232,18 +135,21 @@
 
 (define (eval-slot-to-card slot card)
 	(display "Got slot to card")
-	(do-self-turn)
+	(let ((player-slot (player-field them slot)))
+		(player-field! them slot ((stack-item-cont player-slot) (card-function card))))
 	read-action-type)
 
 (define (read-acts-card card)
 	(lambda (slot)
-		(eval-card-to-slot card (string->number slot))))
+		(eval-card-to-slot (name-to-card card)
+											 (string->number slot))))
 
 (define (read-astc-slot slot)
-	(current-read-interaction
 	 (lambda (card)
-		 (eval-slot-to-card (string->number slot) card)
-		 (current-read-interaction read-action-type))))
+		 (eval-slot-to-card (string->number slot)
+												(name-to-card card))))
+		 
+
 
 (define (read-action-type action)
 	(cond
@@ -253,9 +159,20 @@
 		read-astc-slot)
 	 (else (display "YOU FUCKING BASTARD") read-action-type)))
 
+(define (show-interesting-states p player)
+	(printf "player: ~a\n" p)
+	(vector-for-each (lambda (i slot)
+										 (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
+																			(equal? (slot-vitality slot) 10000)))
+														(printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
+									 player))
+
+(define (display-player-states)
+	(vector-for-each show-interesting-states players))
 
 (define (go handler)
 	(let ((next-handler (handler (read-line))))
+		(if test-interp-mode (display-player-states))
 		(go next-handler)))
 
 (define (main args)
@@ -263,8 +180,9 @@
 				(else
 				 (let ((config-me (car args)))
 					 (cond ((string=? config-me "0") (set! me 0) (set! them 1))
-					((string=? config-me "1") (set! me 1) (set! them 0))
-					(else (display "DIE IN A FIRE") (exit 1))))
-				 (go read-action-type))))
+								 ((string=? config-me "1") (set! me 1) (set! them 0))
+								 ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
+								 (else (display "DIE IN A FIRE") (exit 1)))
+					 (go read-action-type)))))
 
 (main (command-line-arguments))
