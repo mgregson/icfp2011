@@ -17,6 +17,12 @@
 (define copy "copy")
 (define revive "revive")
 (define zombie "zombie")
+(define start-state (make-slot '(I) 10000))
+
+(define players
+  (make-vector
+    2
+    (make-vector 256 start-state)))
 
 (define (apply-card-to-slot card slot)
 	(display (string-append
