@@ -19,7 +19,7 @@
 (define zombie "zombie")
 
 (define me 0)
-(define them 0)
+(define them 1)
 
 (define (apply-card-to-slot card slot)
 	(display (string-append
