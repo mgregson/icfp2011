@@ -43,6 +43,7 @@
 										 val
 										 0
 										 0)))
+
 (define S (make-card "S"
 					 (make-stack-item "S"
 									  func
@@ -60,7 +61,7 @@
 																			func
 																			0
 																			(lambda (x)
-																			  ((f x) (g x))))))))))
+																			  ((stack-item-cont ((stack-item-cont f) x)) ((stack-item-cont g) x))))))))))
 
 
 (define start-state (lambda (ignored) (make-slot
@@ -137,7 +138,7 @@
 (define (eval-card-to-slot card slot)
   (display "Got card to slot")
   (let ((player-slot (player-field them slot)))
-	(player-field! them slot ((card-function card) (stack-item-cont player-slot))))
+	(player-field! them slot ((stack-item-cont (card-function card)) player-slot)))
   read-action-type)
 
 (define (eval-slot-to-card slot card)
