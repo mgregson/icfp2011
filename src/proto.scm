@@ -1,4 +1,5 @@
 (use srfi-9)
+(use extras)
 (define-record slot field vitality)
 
 (define I "I")
