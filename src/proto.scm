@@ -98,11 +98,12 @@
                                         (error "invalid slot #"))))))
 (define dec (make-cardmurh "dec"
                            (numcardfun (lambda (i)
-                                      (if (is-valid-slot-number? (- 255 i))
-                                        (if (is-slot-alive? them (- 255 i))
-                                          (dec-slot them (- 255 i))
-                                          (lambda (i) i))
-                                        (error "invalid slot #"))))))
+                                         (let ((slot (- 255 i)))
+                                      (if (is-valid-slot-number? slot)
+                                        (if (is-slot-alive? them slot)
+                                          (dec-slot them slot)
+                                          (lambda (x) x)))
+                                      (error "invalid slot #"))))))
 
 (define (attack-slots i j n)
   (player-vitality! me i (- (player-vitality me i) n))
