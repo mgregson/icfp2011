@@ -136,7 +136,8 @@
 
 (define (eval-card-to-slot card slot)
   (display "Got card to slot")
-  (do-self-turn)
+  (let ((player-slot (player-field them slot)))
+	(player-field! them slot ((card-function card) (stack-item-cont player-slot))))
   read-action-type)
 
 (define (eval-slot-to-card slot card)
