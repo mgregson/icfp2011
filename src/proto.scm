@@ -14,6 +14,10 @@
    (else fun)
    )
 )
+
+(define (valid-slot-number num)
+  (and (>= num 0) (< num 256)))
+
 (define (numcardfun fun)
   (cardfun (lambda (n)
              (if (numeric? n) (fun n) (runningerror "not numeric"))
