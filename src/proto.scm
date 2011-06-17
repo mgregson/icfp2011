@@ -7,7 +7,7 @@
 	(vitality slot-vitality slot-vitality!))
 ;;Don't really need type, but for debugging pandas
 (define-record-type :error 
-	(make-error type)
+	(error type)
 	error?
 	(type error-type error-type!))
 (define-record-type :card 
@@ -31,7 +31,7 @@
 
 (define (numcardfun fun)
   (cardfun (lambda (n)
-             (if (numeric? n) (fun n) (runningerror "not numeric"))
+             (if (numeric? n) (fun n) (error "not numeric"))
              ))
 )
 
