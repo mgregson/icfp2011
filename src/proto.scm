@@ -24,6 +24,9 @@
              ))
 )
 
+(define (is-slot-alive? player n)
+  (> (vector-ref (vector-ref players player) n) 0))
+
 (define-record cardmurh name function)
 
 (define I (make-cardmurh "I" (cardfun (lambda (i) i))))
@@ -43,12 +46,13 @@
                                   )
                       ))
 (define get (make-cardmurh "get"
-                      (cardfun (lambda (i)
+                      (numcardfun (lambda (i)
                                  (cond
                                   (((not (valid-slot-number i)) (error "invalid slot #")))
+                                  (((is-slot-alive? me i) (player-field me i)))
                                   ;;If alive something
                                   ;;If not alive something else
-                                  (else (error "bah"))
+                                  (else (error "dead slot, cannot get"))
                       )))))
 (define put (make-cardmurh "put" (cardfun (lambda (i) (lambda (x) x)))))
 (define S (make-cardmurh "S" (cardfun (lambda (f) 
