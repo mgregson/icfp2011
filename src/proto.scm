@@ -42,6 +42,13 @@
   (lambda (x) x))
 
 (define (dec-slot i)
+  (let
+      ((current-v (vector-ref (vector-ref players them) i)))
+  (if (and (is-slot-alive? them i) (> current-v 0))
+      (vector-set! (vector-ref players me) i  (- current-v 1))
+      (+ 0 0);;null op otherwise
+  )
+  )
   (lambda (x) x))
 
 (define-record cardmurh name function)
@@ -91,9 +98,9 @@
                                         (error "invalid slot #"))))))
 (define dec (make-cardmurh "dec"
                            (numcardfun (lambda (i)
-                                      (if (is-valid-slot-number? i)
-                                        (if (is-slot-alive? me i)
-                                          (dec-slot me (- 255 i))
+                                      (if (is-valid-slot-number? (- 255 i))
+                                        (if (is-slot-alive? them (- 255 i))
+                                          (dec-slot them (- 255 i))
                                           (lambda (i) i))
                                         (error "invalid slot #"))))))
 
