@@ -304,6 +304,32 @@
 										(player-vitality! current-player slot 1))
 									(card-function I))))))))
 
+(define zombie
+  (make-card "zombie"
+			 (make-stack-item "zombie"
+							  func
+							  (if-stack-depth
+							   (lambda (i)
+								 (make-stack-item (string-append "zombie(" (stack-item-desc i) ")")
+												  func
+												  (if-stack-depth
+												   (lambda (x)
+													 (cond
+													  ((not (stack-item-val? i))
+													   (runtime-error "zombie expects a value; got a function (i)"))
+													  (else
+													   (let* ((idx (- 255 (stack-item-cont i)))
+															  (vitality (player-vitality other-player idx)))
+														 (cond
+														  ((not (valid-slot-id? idx))
+														   (runtime-error "zombie got invalid slot id (255-i)"))
+														  ((> vitality 0)
+														   (card-function I))
+														  (else
+														   (player-vitality! other-player idx -1)
+														   (player-field! other-player idx x)
+														   (card-function I))))))))))))))
+
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
                                        10000)))
