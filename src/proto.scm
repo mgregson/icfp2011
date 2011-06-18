@@ -272,7 +272,8 @@
 																												  other-idx
 																												  (max 65535
 																													   (+ other-v
-																														  (floor (/ (* delta 11) 10))))))))))))))))))))))))))
+																														  (floor (/ (* delta 11) 10)))))))
+																							  (card-function I))))))))))))))))))))
 
 (define copy (make-card "copy"
 						(make-stack-item "copy"
