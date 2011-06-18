@@ -36,6 +36,7 @@
   (string=? val (stack-item-type item)))
 
 (define test-interp-mode #f)
+(define test-derp-mode #f)
 
 (define current-stack-depth 0)
 
@@ -730,6 +731,7 @@
 (define (go handler)
   (let ((next-handler (handler (read-line))))
     (if test-interp-mode (display-player-states))
+    (if test-derp-mode (compute-val-in-slot 0 254))
     (go next-handler)))
 
 (define (main args)
@@ -739,8 +741,27 @@
            (cond ((string=? config-me "0") (set! me 0) (set! them 1))
                  ((string=? config-me "1") (set! me 1) (set! them 0))
                  ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
+                 ((string=? config-me "n") (set! me 0) (set! them 1) (set! test-derp-mode #t))
                  (else (display "DIE IN A FIRE") (exit 1)))
            (go read-action-type)))))
 
+(define (double-slot slot doubles)
+  (acts slot dbl)
+  (double-slot slot (- doubles 1)))
+
+(define (succ-slot slot succs)
+  (acts slot succ)
+  (succ-slot slot (- succs 1)))
+
+(define (compute-val-in-slot slot val)
+  (acts slot put) ;; overwrite slot to identity func
+  (astc slot zero) ;; get a zero into the field
+  (acts slot succ) ;; increment
+  (let ((pow2 (find-largest-pow-2 val 0)))
+    (double-slot slot pow2)
+    (succ-slot slot (- val (expt 2 pow2)))))
+
+(define (find-largest-pow-2 v x)
+  (if (> v (expt 2 x)) (- x 1) (find-largest-pow-2 v (+ x 1))))
 
 (main (command-line-arguments))
