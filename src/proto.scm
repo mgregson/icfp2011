@@ -215,6 +215,7 @@
                                                                                                                                          (floor (/ (* 9 nv) 10))
                                                                                                                                          ))
                                                                                                                                    )
+                                                                                                                 (card-function I)
                                                                                                                  )
                                                                                                                )
                                                                                                            
