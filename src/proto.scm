@@ -328,17 +328,18 @@
                                                                                                            ;;Decrement our thing before checking j
                                                                                                            (player-vitality! current-player iv (- (player-vitality current-player iv) nv))
                                                                                                            ;;Make sure j is valid
-                                                                                                           (if (not (valid-slot-id? jv)) 
+                                                                                                           (if (not (valid-slot-id? (- 255 jv))) 
                                                                                                                (runtime-error "attack failed, invalid j")
                                                                                                                (let
                                                                                                                    ((opjsv (player-vitality other-player (- 255 jv))))
                                                                                                                  (player-vitality! other-player 
                                                                                                                                    (- 255 jv) 
-                                                                                                                                   (max (min 0 opjsv)
-                                                                                                                                        (+
-                                                                                                                                         opjsv
-                                                                                                                                         (floor (/ (* 9 nv) 10))
-                                                                                                                                         ))
+                                                                                                                                   (inexact->exact
+																																	(max (min 0 opjsv)
+																																		 (+
+																																		  opjsv
+																																		  (floor (/ (* 9 nv) 10))
+																																		  )))
                                                                                                                                    )
                                                                                                                  (card-function I)
                                                                                                                  )
