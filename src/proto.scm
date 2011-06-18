@@ -188,8 +188,7 @@
                                                            (gx ((stack-item-zcont g) fx-state x))
                                                            (gx-state (car gx))
                                                            (gx-frame (cdr gx)))
-                                                      ((stack-item-zcont fx-frame) state gx-frame))))
-                                                 )))))))))
+                                                      ((stack-item-zcont fx-frame) state gx-frame)))))))))))))
 
 (define S (make-card "S"
 					 (make-stack-item "S"
@@ -723,7 +722,7 @@
 (define (eval-slot-to-card state slot card)
 										;  (display "Got slot to card")
   (let* ((player-slot (player-field state them slot))
-		 (result (checkForError ((stack-item-cont player-slot) players (card-function card))))
+		 (result (checkForError ((stack-item-cont player-slot) state (card-function card))))
 		 (new-state (player-field! (car result) them slot (cdr result))))
 	(my-turn)
 	(cons new-state read-action-type)))
