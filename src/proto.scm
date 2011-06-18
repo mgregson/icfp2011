@@ -201,7 +201,7 @@
                                                                                                                (nv (stack-item-cont n))
                                                                                                                )
                                                                                                            ;;Decrement our thing before checking j
-                                                                                                           (player-vitality! current-player nv (- (player-vitality current-player iv)))
+                                                                                                           (player-vitality! current-player iv (- (player-vitality current-player iv) nv))
                                                                                                            ;;Make sure j is valid
                                                                                                            (if (not (valid-slot-id? jv)) 
                                                                                                                (runtime-error "attack failed, invalid j")
