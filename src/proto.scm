@@ -463,7 +463,7 @@
                                      func
                                      (if-stack-depth
                                        (lambda (g)
-                                         ((stack-item-cont f))))))))
+                                         f))))))
 (define kFuncZombie (if-stack-depth
                   (lambda (f)
                     (make-r-stack-item (string-append
@@ -473,7 +473,7 @@
                                      func
                                      (if-stack-depth
                                        (lambda (g)
-                                         ((stack-item-zcont f))))))))
+                                         f))))))
 
 (define K (make-card "K"
              (make-stack-item "K"
