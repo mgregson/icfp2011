@@ -1,7 +1,7 @@
 (use srfi-9)
 (use srfi-1)
 (use extras)
-(use vector-lib)
+
 (define-record-type :slot
   (make-slot field vitality)
   slot?
@@ -129,6 +129,21 @@
                                                                                   ((stack-item-cont g) x)))))))))))))
 
 
+(define K (make-card "K"
+             (make-stack-item "K"
+                func
+                (if-stack-depth
+                  (lambda (f)
+                    (make-stack-item (string-append
+                                       "K("
+                                       (stack-item-desc f)
+                                       ")")
+                                     func
+                                     (if-stack-depth
+                                       (lambda (g)
+                                         ((stack-item-cont f))))))))))
+
+
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
                                        10000)))
@@ -244,6 +259,9 @@
                                       (equal? (slot-vitality slot) 10000)))
                             (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
                    player))
+
+(define (vector-for-each f vec)
+  (map f (zip (unfold (lambda (x) (> x (length (vector->list vec)))) (lambda (x) (x)) (lambda (x) (+ x 1)) 0) (vector->list vec))))
 
 (define (display-player-states)
   (vector-for-each show-interesting-states players))
