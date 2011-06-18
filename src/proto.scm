@@ -20,7 +20,8 @@
   stack-item?
   (desc stack-item-desc stack-item-desc!)
   (type stack-item-type stack-item-type!)
-  (cont stack-item-cont stack-item-cont!))
+  (cont stack-item-cont stack-item-cont!)
+  (zcont stack-item-zcont stack-item-zcont!))
 
 
 (define func "function")
@@ -456,13 +457,25 @@
 (define (astc slot card)
   (apply-slot-to-card slot card))
 
+(define (my-turn)
+  (set! current-stack-depth 0)
+  (apply-zombies me)
+  (set! current-stack-depth 0)
+  (do-self-turn))
+
 (define (do-self-turn)
   (display "Do some shit"))
 
 (define (eval-zombie player)
   (lambda (slot)
 	(if (< (player-vitality player slot) 0)
-		'())))
+		(player-field! player
+					   slot
+					   (let ((zcont (stack-item-zcont (player-field player slot))))
+						 ((stack-item-cont (player-field player slot))
+						  (card-function I))
+						 (player-vitality! player slot 0)
+						 (card-function I))))))
 
 (define (apply-zombies player)
   (map (eval-zombie player) (gen-indices (vector->list (vector-ref players player)))))
@@ -476,6 +489,7 @@
   (let* ((player-slot (player-field them slot))
 		 (result (checkForError ((stack-item-cont (card-function card)) player-slot))))
 	(player-field! them slot result))
+  (my-turn)
   read-action-type)
 
 (define (eval-slot-to-card slot card)
@@ -483,6 +497,7 @@
   (let* ((player-slot (player-field them slot))
 		 (result (checkForError ((stack-item-cont player-slot) (card-function card)))))
 	(player-field! them slot result))
+  (my-turn)
   read-action-type)
 
 (define (read-acts-card card)
@@ -498,6 +513,8 @@
 
 
 (define (read-action-type action)
+  (set! current-stack-depth 0)
+  (apply-zombies them)
   (set! current-stack-depth 0)
   (cond
    ((string=? action "1")
