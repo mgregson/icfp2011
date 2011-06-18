@@ -1,4 +1,4 @@
-CSCFLAGS = -O3
+CSCFLAGS = -O2
 
 CSC = csc $(CSCFLAGS)
 
