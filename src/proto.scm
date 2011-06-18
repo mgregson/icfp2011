@@ -288,6 +288,18 @@
                                        (lambda (g)
                                          ((stack-item-cont f))))))))))
 
+(define copy (make-card "copy"
+						(make-stack-item "copy"
+										 func
+										 (if-stack-depth
+										  (lambda (i)
+											(cond
+											 ((not (stack-item-val? i))
+											  (runtime-error "copy expected value; got function (i)"))
+											 ((not (valid-slot-id? (stack-item-cont i)))
+											  (runtime-error "copy got invalid slot id (i)"))
+											 (else
+											  (player-field other-player (stack-item-cont i)))))))))
 
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
