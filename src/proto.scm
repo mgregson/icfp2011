@@ -165,7 +165,7 @@
 						  (lambda (state g)
 							(cons
 							 state
-							 (make-r-stack-item (string-append "S("
+							 (make-stack-item (string-append "S("
 															   (stack-item-desc f)
 															   ","
 															   (stack-item-desc g)
@@ -179,41 +179,23 @@
 														  (gx ((stack-item-cont g) fx-state x))
 														  (gx-state (car gx))
 														  (gx-frame (cdr gx)))
-													 ((stack-item-cont fx-frame) state gx-frame)))))))))))))
-
-(define sFuncZombie 									  
-  (if-stack-depth
-   (lambda (state f)
-     (cons
-	  state
-	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
-						 func
-						 (if-stack-depth
-						  (lambda (state g)
-							(cons
-							 state
-							 (make-r-stack-item (string-append "S("
-															   (stack-item-desc f)
-															   ","
-															   (stack-item-desc g)
-															   ")")
-												func
-												(if-stack-depth
-												 (lambda (state x)
-												   (let* ((fx ((stack-item-zcont f) state x))
-														  (fx-state (car fx))
-														  (fx-frame (cdr fx))
-														  (gx ((stack-item-zcont g) fx-state x))
-														  (gx-state (car gx))
-														  (gx-frame (cdr gx)))
-													 ((stack-item-zcont fx-frame) state gx-frame)))))))))))))
-												   
+													 ((stack-item-cont fx-frame) state gx-frame))) 
+                                                 (if-stack-depth
+                                                  (lambda (state x)
+                                                    (let* ((fx ((stack-item-zcont f) state x))
+                                                           (fx-state (car fx))
+                                                           (fx-frame (cdr fx))
+                                                           (gx ((stack-item-zcont g) fx-state x))
+                                                           (gx-state (car gx))
+                                                           (gx-frame (cdr gx)))
+                                                      ((stack-item-zcont fx-frame) state gx-frame))))
+                                                 ))))))))))
 
 (define S (make-card "S"
 					 (make-stack-item "S"
 									  func
                                       sFunc
-                                      sFuncZombie
+                                      sFunc
                                       )))
 
 (define incFunc (if-stack-depth
