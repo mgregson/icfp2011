@@ -14,3 +14,5 @@ echobot: src/echobot.ss
 
 clean:
 	rm -f $(TARGETS)
+
+.SILENT:
