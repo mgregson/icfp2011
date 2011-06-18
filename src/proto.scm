@@ -20,15 +20,17 @@
   (function card-function card-function!))
 
 (define-record-type :stack-item
-  (make-stack-item desc type depth cont)
+  (make-stack-item desc type cont)
   stack-item?
   (desc stack-item-desc stack-item-desc!)
   (type stack-item-type stack-item-type!)
-  (depth stack-item-depth stack-item-depth!)
   (cont stack-item-cont stack-item-cont!))
 
 (define func "function")
 (define val "value")
+
+(define (stack-item-val? item)
+  (string=? val (stack-item-type item)))
 
 (define test-interp-mode #f)
 
@@ -38,48 +40,60 @@
   (lambda (x)
     (set! current-stack-depth (+ 1 current-stack-depth))
     (if (> current-stack-depth 1000) (lambda (i) (error "too deep"))
-        (f x)
-        )
-    )
-)
+        (f x))))
 
 (define I (make-card "I"
 					 (make-stack-item "I"
 									  func
-									  0
-									  (if-stack-depth (lambda (x) x)))))
+									  (if-stack-depth
+                                       (lambda (x) x)))))
 
 (define zero (make-card "zero"
 						(make-stack-item "zero"
 										 val
-										 0
 										 0)))
+
+(define succ (make-card "succ"
+                        (make-stack-item "succ"
+                                         func
+                                         (if-stack-depth
+                                          (lambda (n)
+                                           (cond ((stack-item-val? n)
+                                                  (let* ((input (stack-item-cont n))
+                                                         (new (+ input 1)))
+                                                    (make-stack-item (number->string new)
+                                                                     val
+                                                                     new)))
+                                                 (else (printf "succ expects a value\n")
+                                                       (lambda (i) (error "succ expects value")))))))))
+                                         
 
 (define S (make-card "S"
 					 (make-stack-item "S"
 									  func
-									  0
-									  (if-stack-depth (lambda (f)
-										(make-stack-item (string-append "S(" (stack-item-desc f) ")")
-														 func
-														 0
-														 (if-stack-depth (lambda (g)
-														   (make-stack-item (string-append "S("
-																						   (stack-item-desc f)
-																						   ","
-																						   (stack-item-desc g)
-																						   ")")
-																			func
-																			0
-																			(if-stack-depth (lambda (x)
-																			  ((stack-item-cont ((stack-item-cont f) x)) ((stack-item-cont g) x)))))))))))))
+									  (if-stack-depth
+                                       (lambda (f)
+                                         (make-stack-item (string-append "S(" (stack-item-desc f) ")")
+                                                          func
+                                                          (if-stack-depth
+                                                           (lambda (g)
+                                                             (make-stack-item (string-append "S("
+                                                                                             (stack-item-desc f)
+                                                                                             ","
+                                                                                             (stack-item-desc g)
+                                                                                             ")")
+                                                                              func
+                                                                              (if-stack-depth
+                                                                               (lambda (x)
+                                                                                 ((stack-item-cont ((stack-item-cont f) x))
+                                                                                  ((stack-item-cont g) x)))))))))))))
 
 
 (define start-state (lambda (ignored) (make-slot
-                     (card-function I)
-                     10000)))
+                                       (card-function I)
+                                       10000)))
 
-(define cards (list I zero S))
+(define cards (list I zero succ S))
 
 (define (makeplayervector) 
   (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
