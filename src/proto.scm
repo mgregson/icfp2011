@@ -287,6 +287,23 @@
 											 (else
 											  (player-field other-player (stack-item-cont i)))))))))
 
+(define revive
+  (make-card "revive"
+			 (make-stack-item "revive"
+							  func
+							  (lambda (i)
+								(cond
+								 ((not (stack-item-val? i))
+								  (runtime-error "revive expected value; got function (i)"))
+								 ((not (valid-slot-id? (stack-item-cont i)))
+								  (runtime-error "revive got invalid slot id (i)"))
+								 (else
+								  (let* ((slot (stack-item-cont i))
+										 (vitality (player-vitality current-player slot)))
+									(if (<= vitality 0)
+										(player-vitality! current-player slot 1))
+									(card-function I))))))))
+
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
                                        10000)))
