@@ -348,7 +348,7 @@
                                        (card-function I)
                                        10000)))
 
-(define cards (list I zero succ S K attack help put copy))
+(define cards (list I zero succ dbl get put S K inc dec attack help copy revive zombie))
 
 (define (makeplayervector) 
   (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
