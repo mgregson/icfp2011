@@ -45,6 +45,10 @@
 (define (valid-slot-id? id)
   (and (<= id 255) (>= id 0)))
 
+(define (valid-vitality? x)
+	(and (< x 65535)
+			 (> x 0)))
+
 (define I (make-card "I"
 					 (make-stack-item "I"
 									  func
