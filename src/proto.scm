@@ -48,6 +48,7 @@
   (string=? val (stack-item-type item)))
 
 (define test-interp-mode #f)
+(define test-derp-mode #f)
 
 (define current-stack-depth 0)
 
@@ -812,6 +813,7 @@
            (cond ((string=? config-me "0") (set! me 0) (set! them 1))
                  ((string=? config-me "1") (set! me 1) (set! them 0))
                  ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
+                 ((string=? config-me "n") (set! me 0) (set! them 1) (set! test-derp-mode #t))
                  (else (display "DIE IN A FIRE") (exit 1)))
            (go read-action-type players)))))
 
