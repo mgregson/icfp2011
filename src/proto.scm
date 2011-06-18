@@ -66,6 +66,20 @@
                                                                      new)))
                                                  (else (printf "succ expects a value\n")
                                                        (lambda (i) (error "succ expects value")))))))))
+
+(define succ (make-card "dbl"
+                        (make-stack-item "dbl"
+                                         func
+                                         (if-stack-depth
+                                          (lambda (n)
+                                           (cond ((stack-item-val? n)
+                                                  (let* ((input (stack-item-cont n))
+                                                         (new (* input 2)))
+                                                    (make-stack-item (number->string new)
+                                                                     val
+                                                                     new)))
+                                                 (else (printf "dbl expects a value\n")
+                                                       (lambda (i) (error "dbl expects value")))))))))
                                          
 
 (define S (make-card "S"
