@@ -1,7 +1,7 @@
 (use srfi-9)
 (use srfi-1)
 (use extras)
-(use vector-lib)
+
 (define-record-type :slot
   (make-slot field vitality)
   slot?
@@ -190,22 +190,20 @@
                                                                                             (if-stack-depth
                                                                                              (lambda (n)
                                                                                                (if (or (not (stack-item-val? i)) 
-                                                                                                       (not (valid-slot-id (stack-item-cont i)))
+                                                                                                       (not (valid-slot-id? (stack-item-cont i)))
                                                                                                        (not (stack-item-val? n))
                                                                                                        (not (integer? (stack-item-cont n)))
                                                                                                        (not (stack-item-val? j))
-                                                                                                       (> (stack-item-cont n) (player-vitality self-player (stack-item-cont i)))
+                                                                                                       (> (stack-item-cont n) (player-vitality current-player (stack-item-cont i)))
                                                                                                        ) (runtime-error "attack failed")
                                                                                                          (let ((jv (stack-item-cont j))
                                                                                                                (iv (stack-item-cont i))
-                                                                                                               (nv (stack-item-cont v))
+                                                                                                               (nv (stack-item-cont n))
                                                                                                                )
                                                                                                            ;;Decrement our thing before checking j
-                                                                                                           (player-vitality! self-player (- (player-vitality self-player iv)
-                                                                                                                                            nv
-                                                                                                                                          ))
+                                                                                                           (player-vitality! current-player iv (- (player-vitality current-player iv) nv))
                                                                                                            ;;Make sure j is valid
-                                                                                                           (if (not (valid-slot-id jv)) 
+                                                                                                           (if (not (valid-slot-id? jv)) 
                                                                                                                (runtime-error "attack failed, invalid j")
                                                                                                                (let
                                                                                                                    ((opjsv (player-vitality other-player (- 255 jv))))
@@ -217,6 +215,7 @@
                                                                                                                                          (floor (/ (* 9 nv) 10))
                                                                                                                                          ))
                                                                                                                                    )
+                                                                                                                 (card-function I)
                                                                                                                  )
                                                                                                                )
                                                                                                            
@@ -274,6 +273,20 @@
 																													   (+ other-v
 																														  (floor (/ (* delta 11) 10)))))))
 																							  (card-function I))))))))))))))))))))
+
+(define K (make-card "K"
+             (make-stack-item "K"
+                func
+                (if-stack-depth
+                  (lambda (f)
+                    (make-stack-item (string-append
+                                       "K("
+                                       (stack-item-desc f)
+                                       ")")
+                                     func
+                                     (if-stack-depth
+                                       (lambda (g)
+                                         ((stack-item-cont f))))))))))
 
 (define copy (make-card "copy"
 						(make-stack-item "copy"
@@ -335,7 +348,7 @@
                                        (card-function I)
                                        10000)))
 
-(define cards (list I zero succ S))
+(define cards (list I zero succ S K attack help put copy))
 
 (define (makeplayervector) 
   (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
@@ -454,6 +467,17 @@
                                       (equal? (slot-vitality slot) 10000)))
                             (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
                    player))
+
+(define (gen-indices lst)
+  (unfold (lambda (x) (> x (length lst))) (lambda (x) x) (lambda (x) (+ x 1)) 0))
+
+(define (vfe f lst)
+  (map (lambda (x) (f (car x) (car (cdr x)))) (zip (gen-indices lst) lst)))
+
+(define (vector-for-each f vec)
+  (if (list? vec)
+    (vfe f vec)
+    (vfe f (vector->list vec))))
 
 (define (display-player-states)
   (vector-for-each show-interesting-states players))
