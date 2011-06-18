@@ -74,7 +74,7 @@
                    (cond ((stack-item-val? n)
                           (let* ((input (stack-item-cont n))
                                  (new (+ input 1)))
-                            (make-stack-item (number->string new)
+                            (make-r-stack-item (number->string new)
                                              val
                                              new)))
                          (else (printf "succ expects a value\n")
@@ -92,7 +92,7 @@
                    (cond ((stack-item-val? n)
                           (let* ((input (stack-item-cont n))
                                  (new (* input 2)))
-                            (make-stack-item (number->string new)
+                            (make-r-stack-item (number->string new)
                                              val
                                              new)))
                          (else (printf "dbl expects a value\n")
@@ -111,7 +111,7 @@
                           (let ((input (stack-item-cont i)))
                             (cond ((valid-slot-id? input)
                                    (let ((result (player-field current-player input)))
-                                     (make-stack-item (number->string new)
+                                     (make-r-stack-item (number->string new)
                                                       val
                                                       new)))
                                   (else (printf "get expects valid slot id")
@@ -140,11 +140,11 @@
 (define sFunc 									  
   (if-stack-depth
    (lambda (f)
-     (make-stack-item (string-append "S(" (stack-item-desc f) ")")
+     (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
                       func
                       (if-stack-depth
                        (lambda (g)
-                         (make-stack-item (string-append "S("
+                         (make-r-stack-item (string-append "S("
                                                          (stack-item-desc f)
                                                          ","
                                                          (stack-item-desc g)
@@ -209,11 +209,11 @@
 (define attackFunc
                                                    (if-stack-depth
                                                      (lambda (i)
-                                                       (make-stack-item (string-append "attack" (stack-item-desc i) ")")
+                                                       (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
                                                                         func
                                                                         (if-stack-depth
                                                                          (lambda (j)
-                                                                           (make-stack-item (string-append "attack(" 
+                                                                           (make-r-stack-item (string-append "attack(" 
                                                                                                            (stack-item-desc i) 
                                                                                                            ","
                                                                                                            (stack-item-desc j)
@@ -259,11 +259,11 @@
 (define helpFunc
   (if-stack-depth
    (lambda (i)
-     (make-stack-item (string-append "help(" (stack-item-desc i) ")")
+     (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
                       func
                       (if-stack-depth
                        (lambda (j)
-                         (make-stack-item (string-append "help("
+                         (make-r-stack-item (string-append "help("
                                                          (stack-item-desc i)
                                                          ","
                                                          (stack-item-desc j)
@@ -365,7 +365,7 @@
 							  func
 							  (if-stack-depth
 							   (lambda (i)
-								 (make-stack-item (string-append "zombie(" (stack-item-desc i) ")")
+								 (make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
 												  func
 												  (if-stack-depth
 												   (lambda (x)
