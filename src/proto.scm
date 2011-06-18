@@ -709,7 +709,7 @@
                    player))
 
 (define (gen-indices lst)
-  (unfold (lambda (x) (> x (length lst))) (lambda (x) x) (lambda (x) (+ x 1)) 0))
+  (unfold (lambda (x) (>= x (length lst))) (lambda (x) x) (lambda (x) (+ x 1)) 0))
 
 (define (vfe f lst)
   (map (lambda (x) (f (car x) (car (cdr x)))) (zip (gen-indices lst) lst)))
