@@ -337,7 +337,7 @@
                       (player-field other-player (stack-item-cont i)))))))
 (define copy (make-card "copy"
 						(make-stack-item "copy"
-										 func
+										func
                                          copyFunc
                                          copyFunc
 										 )))
