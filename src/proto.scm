@@ -190,22 +190,22 @@
                                                                                             (if-stack-depth
                                                                                              (lambda (n)
                                                                                                (if (or (not (stack-item-val? i)) 
-                                                                                                       (not (valid-slot-id (stack-item-cont i)))
+                                                                                                       (not (valid-slot-id? (stack-item-cont i)))
                                                                                                        (not (stack-item-val? n))
                                                                                                        (not (integer? (stack-item-cont n)))
                                                                                                        (not (stack-item-val? j))
-                                                                                                       (> (stack-item-cont n) (player-vitality self-player (stack-item-cont i)))
+                                                                                                       (> (stack-item-cont n) (player-vitality current-player (stack-item-cont i)))
                                                                                                        ) (runtime-error "attack failed")
                                                                                                          (let ((jv (stack-item-cont j))
                                                                                                                (iv (stack-item-cont i))
-                                                                                                               (nv (stack-item-cont v))
+                                                                                                               (nv (stack-item-cont n))
                                                                                                                )
                                                                                                            ;;Decrement our thing before checking j
-                                                                                                           (player-vitality! self-player (- (player-vitality self-player iv)
+                                                                                                           (player-vitality! current-player (- (player-vitality current-player iv))
                                                                                                                                             nv
-                                                                                                                                          ))
+                                                                                                                                          )
                                                                                                            ;;Make sure j is valid
-                                                                                                           (if (not (valid-slot-id jv)) 
+                                                                                                           (if (not (valid-slot-id? jv)) 
                                                                                                                (runtime-error "attack failed, invalid j")
                                                                                                                (let
                                                                                                                    ((opjsv (player-vitality other-player (- 255 jv))))
@@ -305,7 +305,7 @@
                                        (card-function I)
                                        10000)))
 
-(define cards (list I zero succ S))
+(define cards (list I zero succ S K attack help put copy))
 
 (define (makeplayervector) 
   (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
