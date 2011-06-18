@@ -619,10 +619,10 @@
 (define (apply-card-to-slot card slot)
   (display (string-append
 			"1\n"
-			card
+			(card-name card)
 			"\n"
 			(number->string slot)
-			"\nn")))
+			"\n")))
 
 (define (acts card slot)
   (apply-card-to-slot card slot))
@@ -632,7 +632,7 @@
             "2\n"
             (number->string slot)
             "\n"
-            card
+            (card-name card)
             "\n")))
 
 (define (astc slot card)
@@ -730,8 +730,9 @@
 
 (define (go handler)
   (let ((next-handler (handler (read-line))))
-    (if test-interp-mode (display-player-states))
-    (if test-derp-mode (compute-val-in-slot 0 254))
+    (if test-interp-mode
+      (display-player-states)
+      (if test-derp-mode (compute-val-in-slot 0 254)))
     (go next-handler)))
 
 (define (main args)
@@ -746,22 +747,24 @@
            (go read-action-type)))))
 
 (define (double-slot slot doubles)
-  (acts slot dbl)
-  (double-slot slot (- doubles 1)))
+  (acts dbl slot)
+  (if (> doubles 0)
+    (double-slot slot (- doubles 1))))
 
 (define (succ-slot slot succs)
-  (acts slot succ)
-  (succ-slot slot (- succs 1)))
+  (acts succ slot)
+  (if (> succs 0)
+    (succ-slot slot (- succs 1))))
 
 (define (compute-val-in-slot slot val)
-  (acts slot put) ;; overwrite slot to identity func
+  (acts put slot) ;; overwrite slot to identity func
   (astc slot zero) ;; get a zero into the field
-  (acts slot succ) ;; increment
-  (let ((pow2 (find-largest-pow-2 val 0)))
-    (double-slot slot pow2)
-    (succ-slot slot (- val (expt 2 pow2)))))
+  (acts succ slot) ;; increment
+  (let* ((pow2 (find-largest-pow-2 val 0)))
+    (double-slot slot (- pow2 1))
+    (succ-slot slot (- (- val 1) (expt 2 pow2)))))
 
 (define (find-largest-pow-2 v x)
-  (if (> v (expt 2 x)) (- x 1) (find-largest-pow-2 v (+ x 1))))
+  (if (< v (expt 2 x)) (- x 1) (find-largest-pow-2 v (+ x 1))))
 
 (main (command-line-arguments))
