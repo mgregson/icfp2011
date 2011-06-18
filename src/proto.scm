@@ -179,7 +179,7 @@
 														  (gx ((stack-item-cont g) fx-state x))
 														  (gx-state (car gx))
 														  (gx-frame (cdr gx)))
-													 ((stack-item-cont fx-frame) state gx-frame))) 
+													 ((stack-item-cont fx-frame) state gx-frame)))) 
                                                  (if-stack-depth
                                                   (lambda (state x)
                                                     (let* ((fx ((stack-item-zcont f) state x))
@@ -189,7 +189,7 @@
                                                            (gx-state (car gx))
                                                            (gx-frame (cdr gx)))
                                                       ((stack-item-zcont fx-frame) state gx-frame))))
-                                                 ))))))))))
+                                                 )))))))))
 
 (define S (make-card "S"
 					 (make-stack-item "S"
