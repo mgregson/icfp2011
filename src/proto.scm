@@ -138,6 +138,37 @@
                                                                                  ((stack-item-cont ((stack-item-cont f) x))
                                                                                   ((stack-item-cont g) x)))))))))))))
 
+(define inc (make-card "inc"
+					   (make-stack-item "inc"
+										func
+										(if-stack-depth
+										 (lambda (i)
+										   (cond ((valid-slot-id? i)
+												  (let ((vitality (player-vitality current-player i)))
+													(cond ((and (< vitality 65535) (> vitality 0))
+														   (player-vitality! current-player i
+																			 (+ vitality 1)))
+														  (else '())))
+												  (card-function I))
+												 (else
+												  (runtime-error "inc got invalid slot"))))))))
+
+(define dec (make-card "dec"
+					   (make-stack-item "dec"
+										func
+										(if-stack-depth
+										 (lambda (i)
+										   (let ((idx (- 255 i)))
+											 (cond ((valid-slot-id? idx)
+													(let ((vitality (player-vitality other-player idx)))
+													  (cond ((> vitality 0)
+															 (player-vitality! other-player idx
+																			   (- vitality 1)))
+															(else '()))
+													  (card-function I)))
+												   (else
+													(runtime-error "dec got invalid slot")))))))))
+
 
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
