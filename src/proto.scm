@@ -495,8 +495,6 @@
     (eval-slot-to-card (string->number slot)
                        (name-to-card card))))
 
-
-
 (define (read-action-type action)
   (set! current-stack-depth 0)
   (cond
