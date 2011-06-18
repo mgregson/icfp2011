@@ -112,9 +112,7 @@
                           (let ((input (stack-item-cont i)))
                             (cond ((valid-slot-id? input)
                                    (let ((result (player-field current-player input)))
-                                     (make-r-stack-item (number->string new)
-                                                      val
-                                                      new)))
+									 result))
                                   (else (printf "get expects valid slot id")
                                         (lambda (i) (error "get expects valid slot id"))))))
                          (else (printf "get expects a value\n")
@@ -381,7 +379,7 @@
                                                   ((> delta my-v)
                                                    (runtime-error "help expected n < vitality i"))
                                                   (else
-                                                   (playter-vitality! current-player my-idx (- my-v delta))
+                                                   (player-vitality! current-player my-idx (- my-v delta))
                                                    (cond
                                                     ((not (stack-item-val? j))
                                                      (runtime-error "help expected value; got function (j)"))
@@ -642,7 +640,8 @@
   (do-self-turn))
 
 (define (do-self-turn)
-  (display "Do some shit"))
+ ; (display "Do some shit"))
+  '())
 
 (define (eval-zombie player)
   (lambda (slot)
@@ -663,7 +662,7 @@
 )
 
 (define (eval-card-to-slot card slot)
-  (display "Got card to slot")
+;  (display "Got card to slot")
   (let* ((player-slot (player-field them slot))
 		 (result (checkForError ((stack-item-cont (card-function card)) player-slot))))
 	(player-field! them slot result))
@@ -671,7 +670,7 @@
   read-action-type)
 
 (define (eval-slot-to-card slot card)
-  (display "Got slot to card")
+;  (display "Got slot to card")
   (let* ((player-slot (player-field them slot))
 		 (result (checkForError ((stack-item-cont player-slot) (card-function card)))))
 	(player-field! them slot result))
