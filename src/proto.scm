@@ -116,7 +116,6 @@
                                         (if-stack-depth
                                          (lambda (x)
                                            (card-function I))))))
-                                                       (runtime-error "succ expects value"))))))))
                                          
 (define S (make-card "S"
 					 (make-stack-item "S"
@@ -309,8 +308,16 @@
                             (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
                    player))
 
+(define (gen-indices lst)
+  (unfold (lambda (x) (> x (length lst))) (lambda (x) x) (lambda (x) (+ x 1)) 0))
+
+(define (vfe f lst)
+  (map (lambda (x) (f (car x) (car (cdr x)))) (zip (gen-indices lst) lst)))
+
 (define (vector-for-each f vec)
-  (map f (zip (unfold (lambda (x) (> x (length (vector->list vec)))) (lambda (x) (x)) (lambda (x) (+ x 1)) 0) (vector->list vec))))
+  (if (list? vec)
+    (vfe f vec)
+    (vfe f (vector->list vec))))
 
 (define (display-player-states)
   (vector-for-each show-interesting-states players))
