@@ -8,6 +8,9 @@
   (field slot-field slot-field!)
   (vitality slot-vitality slot-vitality!))
 
+(define (slot-copy slot)
+  (make-slot (slot-field slot) (slot-vitality slot)))
+
 ;;Don't really need type, but for debugging pandas
 (define-record-type :card 
   (make-card name function)
@@ -18,11 +21,19 @@
 (define-record-type :stack-item
   (make-stack-item desc type cont zcont)
   stack-item?
-  (desc stack-item-desc stack-item-desc!)
-  (type stack-item-type stack-item-type!)
-  (cont stack-item-cont stack-item-cont!)
-  (zcont stack-item-zcont stack-item-zcont!))
+  (desc stack-item-desc)
+  (type stack-item-type)
+  (cont stack-item-cont)
+  (zcont stack-item-zcont))
 
+(define (state-copy state)
+  (list->vector
+   (map
+	(lambda (player-state)
+	  (list->vector
+	   (map slot-copy
+			(vector->list player-state))))
+	(vector->list state))))
 
 (define func "function")
 (define val "value")
@@ -30,25 +41,26 @@
   (set! current-stack-depth -1)
   (card-function I)
   )
+
 (define (make-r-stack-item desc type cont) (make-stack-item desc type cont cont))
 
 (define (stack-item-val? item)
   (string=? val (stack-item-type item)))
 
 (define test-interp-mode #f)
-(define test-derp-mode #f)
 
 (define current-stack-depth 0)
 
 (define max-stack-depth 1000)
 
 (define (if-stack-depth f)
-  (lambda (x)
+  (lambda (state x)
     (set! current-stack-depth (+ 1 current-stack-depth))
-    (if (or (> current-stack-depth (- max-stack-depth 1)) (equal? -1 current-stack-depth))
+    (cond ((or (> current-stack-depth (- max-stack-depth 1)) (equal? -1 current-stack-depth))
         ;;We've gone too deep/it can't fit
-        (set! current-stack-depth -1)
-        (f x))))
+		   (set! current-stack-depth -1)
+		   (cons state (card-function I)))
+		  (else (f state x)))))
 
 (define (valid-slot-id? id)
   (and (<= id 255) (>= id 0)))
@@ -57,7 +69,7 @@
   (and (< x 65535)
 	   (> x 0)))
 
-(define Ifun (if-stack-depth (lambda (x) x)))
+(define Ifun (if-stack-depth (lambda (state x) (cons state x))))
 
 (define I (make-card "I"
 					 (make-stack-item "I"
@@ -72,15 +84,17 @@
                                          )))
 
 (define succFun (if-stack-depth
-                 (lambda (n)
+                 (lambda (state n)
                    (cond ((stack-item-val? n)
                           (let* ((input (stack-item-cont n))
                                  (new (+ input 1)))
-                            (make-r-stack-item (number->string new)
-											   val
-											   new)))
+                            (cons
+							 state
+							 (make-r-stack-item (number->string new)
+												val
+												new))))
                          (else (printf "succ expects a value\n")
-                               (runtime-error "succ expects value")))) ))
+                               (cons state (runtime-error "succ expects value")))) )))
 
 (define succ (make-card "succ"
                         (make-stack-item "succ"
@@ -90,15 +104,17 @@
                                          )))
 
 (define dblFunc (if-stack-depth
-                 (lambda (n)
+                 (lambda (state n)
                    (cond ((stack-item-val? n)
                           (let* ((input (stack-item-cont n))
                                  (new (* input 2)))
-                            (make-r-stack-item (number->string new)
-											   val
-											   new)))
+							(cons
+							 state
+							 (make-r-stack-item (number->string new)
+												val
+												new))))
                          (else (printf "dbl expects a value\n")
-                               (runtime-error "dbl expects value"))))))
+                               (cons state (runtime-error "dbl expects value")))))))
 
 (define dbl (make-card "dbl"
 					   (make-stack-item "dbl"
@@ -108,16 +124,16 @@
 										)))
 
 (define getFunc (if-stack-depth
-                 (lambda (i)
+                 (lambda (state i)
                    (cond ((stack-item-val? i)
                           (let ((input (stack-item-cont i)))
                             (cond ((valid-slot-id? input)
-                                   (let ((result (player-field current-player input)))
-									 result))
+                                   (let ((result (player-field state current-player input)))
+									 (cons state result)))
                                   (else (printf "get expects valid slot id")
-                                        (lambda (i) (error "get expects valid slot id"))))))
+                                        (cons state (runtime-error "get expects valid slot id"))))))
                          (else (printf "get expects a value\n")
-                               (runtime-error "get expects value"))))))
+                               (cons state (runtime-error "get expects value")))))))
 
 (define get (make-card "get"
 					   (make-stack-item "get"
@@ -127,8 +143,8 @@
 										)))
 
 (define putFunc (if-stack-depth
-                 (lambda (x)
-                   (card-function I))))
+                 (lambda (state x)
+                   (cons state (card-function I)))))
 
 (define put (make-card "put"
                        (make-stack-item "put"
@@ -139,40 +155,58 @@
 
 (define sFunc 									  
   (if-stack-depth
-   (lambda (f)
-     (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
-						func
-						(if-stack-depth
-						 (lambda (g)
-						   (make-r-stack-item (string-append "S("
-															 (stack-item-desc f)
-															 ","
-															 (stack-item-desc g)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (x)
-												 ((stack-item-cont ((stack-item-cont f) x))
-												  ((stack-item-cont g) x))))))))))
-  )
+   (lambda (state f)
+     (cons
+	  state
+	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
+						 func
+						 (if-stack-depth
+						  (lambda (state g)
+							(cons
+							 state
+							 (make-r-stack-item (string-append "S("
+															   (stack-item-desc f)
+															   ","
+															   (stack-item-desc g)
+															   ")")
+												func
+												(if-stack-depth
+												 (lambda (state x)
+												   (let* ((fx ((stack-item-cont f) state x))
+														  (fx-state (car fx))
+														  (fx-frame (cdr fx))
+														  (gx ((stack-item-cont g) fx-state x))
+														  (gx-state (car gx))
+														  (gx-frame (cdr gx)))
+													 ((stack-item-cont fx-frame) state gx-frame)))))))))))))
+
 (define sFuncZombie 									  
   (if-stack-depth
-   (lambda (f)
-     (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
-						func
-						(if-stack-depth
-						 (lambda (g)
-						   (make-r-stack-item (string-append "S("
-															 (stack-item-desc f)
-															 ","
-															 (stack-item-desc g)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (x)
-												 ((stack-item-zcont ((stack-item-zcont f) x))
-												  ((stack-item-zcont g) x))))))))))
-  )
+   (lambda (state f)
+     (cons
+	  state
+	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
+						 func
+						 (if-stack-depth
+						  (lambda (state g)
+							(cons
+							 state
+							 (make-r-stack-item (string-append "S("
+															   (stack-item-desc f)
+															   ","
+															   (stack-item-desc g)
+															   ")")
+												func
+												(if-stack-depth
+												 (lambda (state x)
+												   (let* ((fx ((stack-item-zcont f) state x))
+														  (fx-state (car fx))
+														  (fx-frame (cdr fx))
+														  (gx ((stack-item-zcont g) fx-state x))
+														  (gx-state (car gx))
+														  (gx-frame (cdr gx)))
+													 ((stack-item-zcont fx-frame) state gx-frame)))))))))))))
+												   
 
 (define S (make-card "S"
 					 (make-stack-item "S"
@@ -182,33 +216,34 @@
                                       )))
 
 (define incFunc (if-stack-depth
-                 (lambda (i)
+                 (lambda (state i)
                    (cond ((stack-item-val? i)
                           (let ((idx (stack-item-cont i)))
                             (cond ((valid-slot-id? idx)
-                                   (let ((vitality (player-vitality current-player idx)))
+                                   (let ((vitality (player-vitality state current-player idx)))
                                      (cond ((and (< vitality 65535) (> vitality 0))
-                                            (player-vitality! current-player idx
-                                                              (+ vitality 1)))
-                                           (else '())))
-                                   (card-function I))
+                                            (cons (player-vitality! state current-player idx
+																	(+ vitality 1))
+												  (card-function I)))
+                                           (else (cons state (card-function I))))))
                                   (else
-                                   (runtime-error "inc got invalid slot")))))
-                         (else (runtime-error "inc expected value; got function"))))))
+                                   (cons state (runtime-error "inc got invalid slot"))))))
+                         (else (cons state (runtime-error "inc expected value; got function")))))))
+
 (define incFuncZombie (if-stack-depth
-					   (lambda (i)
+					   (lambda (state i)
 						 (cond ((stack-item-val? i)
 								(let ((idx (stack-item-cont i)))
 								  (cond ((valid-slot-id? idx)
-										 (let ((vitality (player-vitality current-player idx)))
+										 (let ((vitality (player-vitality state current-player idx)))
 										   (cond ((> vitality 0)
-												  (player-vitality! current-player idx
-																	(- vitality 1)))
-												 (else '())))
-										 (card-function I))
+												  (cons (player-vitality! state current-player idx
+																		  (- vitality 1))
+														(card-function I)))
+												 (else (cons state card-function I)))))
 										(else
-										 (runtime-error "inc got invalid slot")))))
-							   (else (runtime-error "inc expected value; got function"))))))
+										 (cons state (runtime-error "inc got invalid slot"))))))
+							   (else (cons state (runtime-error "inc expected value; got function")))))))
 
 (define inc (make-card "inc"
 					   (make-stack-item "inc"
@@ -217,36 +252,36 @@
 
 (define decFunc
   (if-stack-depth
-   (lambda (i)
+   (lambda (state i)
      (cond ((stack-item-val? i)
             (let ((idx (- 255 (stack-item-cont i))))
               (cond ((valid-slot-id? idx)
-                     (let ((vitality (player-vitality other-player idx)))
+                     (let ((vitality (player-vitality state  other-player idx)))
                        (cond ((> vitality 0)
-                              (player-vitality! other-player idx
-                                                (- vitality 1)))
-                             (else '()))
-                       (card-function I)))
+                              (cons (player-vitality! state other-player idx
+													  (- vitality 1))
+									(card-function I)))
+                             (else (cons state (card-function I))))))
                     (else
-                     (runtime-error "dec got invalid slot")))))
-           (else (runtime-error "dec expected value; got function")))))
-  )
+                     (cons state (runtime-error "dec got invalid slot"))))))
+           (else (cons state (runtime-error "dec expected value; got function")))))))
+
 (define decFuncZombie 
   (if-stack-depth
-   (lambda (i)
+   (lambda (state i)
      (cond ((stack-item-val? i)
             (let ((idx (- 255 (stack-item-cont i))))
               (cond ((valid-slot-id? idx)
-                     (let ((vitality (player-vitality other-player idx)))
+                     (let ((vitality (player-vitality state other-player idx)))
                        (cond ((and (> vitality 0) (< vitality 65535)) 
-                              (player-vitality! other-player idx
-                                                (+ vitality 1)))
-                             (else '()))
-                       (card-function I)))
+                              (cons (player-vitality! state other-player idx
+													  (+ vitality 1))
+									(card-function I)))
+                             (else (cons state (card-function I))))))
                     (else
-                     (runtime-error "dec got invalid slot")))))
-           (else (runtime-error "dec expected value; got function")))))
-  )
+                     (cons state (runtime-error "dec got invalid slot"))))))
+           (else (cons state (runtime-error "dec expected value; got function")))))))
+
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
@@ -255,202 +290,210 @@
 
 (define attackFunc
   (if-stack-depth
-   (lambda (i)
-	 (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
-						func
-						(if-stack-depth
-						 (lambda (j)
-						   (make-r-stack-item (string-append "attack(" 
-															 (stack-item-desc i) 
-															 ","
-															 (stack-item-desc j)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (n)
-												 (if (or (not (stack-item-val? i)) 
-														 (not (valid-slot-id? (stack-item-cont i)))
-														 (not (stack-item-val? n))
-														 (not (integer? (stack-item-cont n)))
-														 (not (stack-item-val? j))
-														 (> (stack-item-cont n) (player-vitality current-player (stack-item-cont i)))
-														 ) (runtime-error "attack failed")
-														   (let ((jv (stack-item-cont j))
-																 (iv (stack-item-cont i))
-																 (nv (stack-item-cont n))
-																 )
-															 ;;Decrement our thing before checking j
-															 (player-vitality! current-player iv (- (player-vitality current-player iv) nv))
+   (lambda (state i)
+	 (cons
+	  state
+	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
+						 func
+						 (if-stack-depth
+						  (lambda (state j)
+							(cons
+							 state 
+							 (make-r-stack-item (string-append "attack(" 
+															   (stack-item-desc i) 
+															   ","
+															   (stack-item-desc j)
+															   ")")
+												func
+												(if-stack-depth
+												 (lambda (state n)
+												   (if (or (not (stack-item-val? i)) 
+														   (not (valid-slot-id? (stack-item-cont i)))
+														   (not (stack-item-val? n))
+														   (not (integer? (stack-item-cont n)))
+														   (not (stack-item-val? j))
+														   (> (stack-item-cont n) (player-vitality state current-player (stack-item-cont i))))
+													   (cons state (runtime-error "attack failed"))
+														   (let* ((jv (stack-item-cont j))
+																  (iv (stack-item-cont i))
+																  (nv (stack-item-cont n))
+																  ;;Decrement our thing before checking j
+																  (state-1 (player-vitality! state current-player iv (- (player-vitality state (current-player) iv) nv))))
 															 ;;Make sure j is valid
 															 (if (not (valid-slot-id? (- 255 jv))) 
-																 (runtime-error "attack failed, invalid j")
-																 (let
-																	 ((opjsv (player-vitality other-player (- 255 jv))))
-																   (player-vitality! other-player 
-																					 (- 255 jv)
-																					 (inexact->exact
-																					  (max (min 0 opjsv)
-																						   (-
-																							opjsv
-																							(floor (/ (* 9 nv) 10))
-																							)))
-																					 )
-																   (card-function I)
-																   )
-																 )
-															 
+																 (cons state-1 (runtime-error "attack failed, invalid j"))
+																 (let ((opjsv (player-vitality state-1 other-player (- 255 jv))))
+																   (cons (player-vitality! state-1
+																						   other-player
+																						   (- 255 jv)
+																						   (inexact->exact
+																							(max (min 0 opjsv)
+																								 (-
+																								  opjsv
+																								  (floor (/ (* 9 nv) 10))))))
+																		 (card-function I)))))))))))))))))
 
-															 )))))))))))
 (define attackFuncZombie
   (if-stack-depth
-   (lambda (i)
-	 (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
-						func
-						(if-stack-depth
-						 (lambda (j)
-						   (make-r-stack-item (string-append "attack(" 
-															 (stack-item-desc i) 
-															 ","
-															 (stack-item-desc j)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (n)
-												 (if (or (not (stack-item-val? i)) 
-														 (not (valid-slot-id? (stack-item-cont i)))
-														 (not (stack-item-val? n))
-														 (not (integer? (stack-item-cont n)))
-														 (not (stack-item-val? j))
-														 (> (stack-item-cont n) (player-vitality current-player (stack-item-cont i)))
-														 ) (runtime-error "attack failed")
-														   (let ((jv (stack-item-cont j))
-																 (iv (stack-item-cont i))
-																 (nv (stack-item-cont n))
-																 )
-															 ;;Decrement our thing before checking j
-															 (player-vitality! current-player iv (- (player-vitality current-player iv) nv))
-															 ;;Make sure j is valid
-															 (if (not (valid-slot-id? (- 255 jv))) 
-																 (runtime-error "attack failed, invalid j")
-																 (let
-																	 ((opjsv (player-vitality other-player (- 255 jv))))
-																   (player-vitality! other-player 
-																					 (- 255 jv) 
-																					 (inexact->exact
-																					  (max (min 0 opjsv)
-																						   (+
-																							opjsv
-																							(floor (/ (* 9 nv) 10))
-																							)))
-																					 )
-																   (card-function I)
-																   )
-																 )
-															 
+   (lambda (state i)
+	 (cons
+	  state
+	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
+						 func
+						 (if-stack-depth
+						  (lambda (state j)
+							(cons
+							 state
+							 (make-r-stack-item (string-append "attack(" 
+															   (stack-item-desc i) 
+															   ","
+															   (stack-item-desc j)
+															   ")")
+												func
+												(if-stack-depth
+												 (lambda (state n)
+												   (if (or (not (stack-item-val? i)) 
+														   (not (valid-slot-id? (stack-item-cont i)))
+														   (not (stack-item-val? n))
+														   (not (integer? (stack-item-cont n)))
+														   (not (stack-item-val? j))
+														   (> (stack-item-cont n) (player-vitality state current-player (stack-item-cont i))))
+													   (cons state (runtime-error "attack failed"))
+													   (let* ((jv (stack-item-cont j))
+															  (iv (stack-item-cont i))
+															  (nv (stack-item-cont n))
+															  ;;Decrement our thing before checking j
+															  (state-1 (player-vitality! state current-player iv (- (player-vitality state current-player iv) nv))))
+														 ;;Make sure j is valid
+														 (if (not (valid-slot-id? (- 255 jv))) 
+															 (cons state-1 (runtime-error "attack failed, invalid j"))
+															 (let ((opjsv (player-vitality state-1 other-player (- 255 jv))))
+															   (cons (player-vitality! state-1
+																					   other-player 
+																					   (- 255 jv) 
+																					   (inexact->exact
+																						(max (min 0 opjsv)
+																							 (+
+																							  opjsv
+																							  (floor (/ (* 9 nv) 10))))))
+																	 (card-function I)))))))))))))))))
 
-															 )))))))))))
+(define attack (make-card "attack"
+						  (make-stack-item "attack"
+										   func
+										   attackFunc
+										   attackFunc)))
 
-(define attack (make-card "attack" (make-stack-item "attack"
-                                                    func attackFunc attackFunc)))
 (define helpFunc
   (if-stack-depth
-   (lambda (i)
-     (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
-						func
-						(if-stack-depth
-						 (lambda (j)
-						   (make-r-stack-item (string-append "help("
-															 (stack-item-desc i)
-															 ","
-															 (stack-item-desc j)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (n)
-												 (cond
-												  ((not (stack-item-val? i))
-												   (runtime-error "help expected value; got function (i)"))
-												  ((not (valid-slot-id? (stack-item-cont i)))
-												   (runtime-error "help got invalid slot id (i)"))
-												  ((not (stack-item-val? n))
-												   (runtime-error "help expected vallue; got function (n)"))
-												  (else
-												   (let* ((my-idx (stack-item-cont i))
-														  (my-v (player-vitality current-player my-idx))
-														  (delta (stack-item-cont n)))
-													 (cond
-													  ((> delta my-v)
-													   (runtime-error "help expected n < vitality i"))
-													  (else
-													   (player-vitality! current-player my-idx (- my-v delta))
+   (lambda (state i)
+	 (cons
+	  state
+	  (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
+						 func
+						 (if-stack-depth
+						  (lambda (state j)
+							(cons
+							 state
+							 (make-r-stack-item (string-append "help("
+															   (stack-item-desc i)
+															   ","
+															   (stack-item-desc j)
+															   ")")
+												func
+												(if-stack-depth
+												 (lambda (state n)
+												   (cond
+													((not (stack-item-val? i))
+													 (cons state (runtime-error "help expected value; got function (i)")))
+													((not (valid-slot-id? (stack-item-cont i)))
+													 (cons state (runtime-error "help got invalid slot id (i)")))
+													((not (stack-item-val? n))
+													 (cons state (runtime-error "help expected vallue; got function (n)")))
+													(else
+													 (let* ((my-idx (stack-item-cont i))
+															(my-v (player-vitality state current-player my-idx))
+															(delta (stack-item-cont n)))
 													   (cond
-														((not (stack-item-val? j))
-														 (runtime-error "help expected value; got function (j)"))
-														((not (valid-slot-id? (stack-item-cont j)))
-														 (runtime-error "help got invalid slot id (j)"))
+														((> delta my-v)
+														 (cons state (runtime-error "help expected n < vitality i")))
 														(else
-														 (let* ((other-idx (stack-item-cont j))
-																(other-v (player-vitality current-player other-idx)))
+														 (let ((state-1 (player-vitality! state-1 current-player my-idx (- my-v delta))))
 														   (cond
-															((<= other-v 0)
-															 '())
+															((not (stack-item-val? j))
+															 (cons state-1 (runtime-error "help expected value; got function (j)")))
+															((not (valid-slot-id? (stack-item-cont j)))
+															 (cons state-1 (runtime-error "help got invalid slot id (j)")))
 															(else
-															 (player-vitality! current-player
-																			   other-idx
-																			   (inexact->exact
-																				(min 65535
-																					 (+ other-v
-																						(floor (/ (* delta 11) 10))))))
-															 (card-function I))))))))))))))))))))
+															 (let* ((other-idx (stack-item-cont j))
+																	(other-v (player-vitality state-1 current-player other-idx)))
+															   (cond
+																((<= other-v 0)
+																 (cons state-1 (card-function I)))
+																(else
+																 (cons (player-vitality! state-1
+																						 current-player
+																						 other-idx
+																						 (inexact->exact
+																						  (min 65535
+																							   (+ other-v
+																								  (floor (/ (* delta 11) 10))))))
+																	   (card-function I))))))))))))))))))))))))
 
 (define helpFuncZombie
   (if-stack-depth
-   (lambda (i)
-     (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
+   (lambda (state i)
+	 (cons
+	  state
+	  (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
 						func
 						(if-stack-depth
-						 (lambda (j)
-						   (make-r-stack-item (string-append "help("
-															 (stack-item-desc i)
-															 ","
-															 (stack-item-desc j)
-															 ")")
-											  func
-											  (if-stack-depth
-											   (lambda (n)
-												 (cond
-												  ((not (stack-item-val? i))
-												   (runtime-error "help expected value; got function (i)"))
-												  ((not (valid-slot-id? (stack-item-cont i)))
-												   (runtime-error "help got invalid slot id (i)"))
-												  ((not (stack-item-val? n))
-												   (runtime-error "help expected vallue; got function (n)"))
-												  (else
-												   (let* ((my-idx (stack-item-cont i))
-														  (my-v (player-vitality current-player my-idx))
-														  (delta (stack-item-cont n)))
-													 (cond
-													  ((> delta my-v)
-													   (runtime-error "help expected n < vitality i"))
-													  (else
-													   (playter-vitality! current-player my-idx (- my-v delta))
-													   (cond
-														((not (stack-item-val? j))
-														 (runtime-error "help expected value; got function (j)"))
-														((not (valid-slot-id? (stack-item-cont j)))
-														 (runtime-error "help got invalid slot id (j)"))
-														(else
-														 (let* ((other-idx (stack-item-cont j))
-																(other-v (player-vitality current-player other-idx)))
-														   (cond
-															((<= other-v 0)
-															 '())
-															(else
-															 (player-vitality! current-player
-																			   other-idx
-																			   (max 65535
-																					(- other-v
-																					   (floor (/ (* delta 11) 10))))))))))))))))))))))))
+						 (lambda (state j)
+						   (cons
+							state
+							(make-r-stack-item (string-append "help("
+															  (stack-item-desc i)
+															  ","
+															  (stack-item-desc j)
+															  ")")
+											   func
+											   (if-stack-depth
+												(lambda (state n)
+												  (cond
+												   ((not (stack-item-val? i))
+													(cons state (runtime-error "help expected value; got function (i)")))
+												   ((not (valid-slot-id? (stack-item-cont i)))
+													(cons state (runtime-error "help got invalid slot id (i)")))
+												   ((not (stack-item-val? n))
+													(cons state (runtime-error "help expected vallue; got function (n)")))
+												   (else
+													(let* ((my-idx (stack-item-cont i))
+														   (my-v (player-vitality state current-player my-idx))
+														   (delta (stack-item-cont n)))
+													  (cond
+													   ((> delta my-v)
+														(runtime-error "help expected n < vitality i"))
+													   (else
+														(let ((state-1 (player-vitality! state current-player my-idx (- my-v delta))))
+														  (cond
+														   ((not (stack-item-val? j))
+															(cons state-1 (runtime-error "help expected value; got function (j)")))
+														   ((not (valid-slot-id? (stack-item-cont j)))
+															(cons state-1 (runtime-error "help got invalid slot id (j)")))
+														   (else
+															(let* ((other-idx (stack-item-cont j))
+																   (other-v (player-vitality state-1 current-player other-idx)))
+															  (cond
+															   ((<= other-v 0)
+																(cons state-1 (card-function I)))
+															   (else
+																(cons (player-vitality! state-1
+																						current-player
+																						other-idx
+																						(max 65535
+																							 (- other-v
+																								(floor (/ (* delta 11) 10)))))
+																	  (card-function I))))))))))))))))))))))))
 
 
 (define help (make-card "help"
@@ -459,80 +502,94 @@
                                          helpFunc helpFuncZombie)))
 
 (define kFunc (if-stack-depth
-			   (lambda (f)
-				 (make-r-stack-item (string-append
-									 "K("
-									 (stack-item-desc f)
-									 ")")
-									func
-									(if-stack-depth
-									 (lambda (g)
-									   f))))))
+			   (lambda (state f)
+				 (cons
+				  state
+				  (make-r-stack-item (string-append
+									  "K("
+									  (stack-item-desc f)
+									  ")")
+									 func
+									 (if-stack-depth
+									  (lambda (state g)
+										(cons state f))))))))
 (define kFuncZombie (if-stack-depth
-					 (lambda (f)
-					   (make-r-stack-item (string-append
-										   "K("
-										   (stack-item-desc f)
-										   ")")
-										  func
-										  (if-stack-depth
-										   (lambda (g)
-											 f))))))
+					 (lambda (state f)
+					   (cons
+						state
+						(make-r-stack-item (string-append
+											"K("
+											(stack-item-desc f)
+											")")
+										   func
+										   (if-stack-depth
+											(lambda (state g)
+											  (cons state f))))))))
 
 (define K (make-card "K"
 					 (make-stack-item "K"
 									  func
 									  kFunc kFuncZombie)))
 
-(define copyFunc (if-stack-depth
-                  (lambda (i)
-                    (cond
-                     ((not (stack-item-val? i))
-                      (runtime-error "copy expected value; got function (i)"))
-                     ((not (valid-slot-id? (stack-item-cont i)))
-                      (runtime-error "copy got invalid slot id (i)"))
-                     (else
-                      (player-field other-player (stack-item-cont i)))))))
+(define copyFunc
+  (if-stack-depth
+   (lambda (state i)
+	 (cond
+	  ((not (stack-item-val? i))
+	   (cons state (runtime-error "copy expected value; got function (i)")))
+	  ((not (valid-slot-id? (stack-item-cont i)))
+	   (cons state (runtime-error "copy got invalid slot id (i)")))
+	  (else
+	   (cons state (player-field state other-player (stack-item-cont i))))))))
+
 (define copyFuncZombie (if-stack-depth
-						(lambda (i)
+						(lambda (state i)
 						  (cond
 						   ((not (stack-item-val? i))
-							(runtime-error "copy expected value; got function (i)"))
+							(cons state (runtime-error "copy expected value; got function (i)")))
 						   ((not (valid-slot-id? (stack-item-zcont i)))
-							(runtime-error "copy got invalid slot id (i)"))
+							(cons state (runtime-error "copy got invalid slot id (i)")))
 						   (else
-							(player-field other-player (stack-item-zcont i)))))))
+							(cons state (player-field state other-player (stack-item-zcont i))))))))
 
 (define copy (make-card "copy"
 						(make-stack-item "copy"
 										 func
                                          copyFunc
-                                         copyFuncZombie
-										 )))
-(define reviveFunc (if-stack-depth (lambda (i)
-									 (cond
-									  ((not (stack-item-val? i))
-									   (runtime-error "revive expected value; got function (i)"))
-									  ((not (valid-slot-id? (stack-item-cont i)))
-									   (runtime-error "revive got invalid slot id (i)"))
-									  (else
-									   (let* ((slot (stack-item-cont i))
-											  (vitality (player-vitality current-player slot)))
-										 (if (<= vitality 0)
-											 (player-vitality! current-player slot 1))
-										 (card-function I))))) ))
-(define reviveFuncZombie (if-stack-depth (lambda (i)
-										   (cond
-											((not (stack-item-val? i))
-											 (runtime-error "revive expected value; got function (i)"))
-											((not (valid-slot-id? (stack-item-zcont i)))
-											 (runtime-error "revive got invalid slot id (i)"))
-											(else
-											 (let* ((slot (stack-item-cont i))
-													(vitality (player-vitality current-player slot)))
-											   (if (<= vitality 0)
-												   (player-vitality! current-player slot 1))
-											   (card-function I))))) ) )
+                                         copyFuncZombie)))
+
+(define reviveFunc
+  (if-stack-depth
+   (lambda (state i)
+	 (cond
+	  ((not (stack-item-val? i))
+	   (cons state (runtime-error "revive expected value; got function (i)")))
+	  ((not (valid-slot-id? (stack-item-cont i)))
+	   (cons state (runtime-error "revive got invalid slot id (i)")))
+	  (else
+	   (let* ((slot (stack-item-cont i))
+			  (vitality (player-vitality state current-player slot)))
+		 (if (<= vitality 0)
+			 (cons (player-vitality! state current-player slot 1)
+				   (card-function I))
+			 (cons state card-function I))))))))
+
+(define reviveFuncZombie
+  (if-stack-depth
+   (lambda (state i)
+	 (cond
+	  ((not (stack-item-val? i))
+	   (cons state (runtime-error "revive expected value; got function (i)")))
+	  ((not (valid-slot-id? (stack-item-zcont i)))
+	   (cons state (runtime-error "revive got invalid slot id (i)")))
+	  (else
+	   (let* ((slot (stack-item-cont i))
+			  (vitality (player-vitality current-player slot)))
+		 (if (<= vitality 0)
+			 (cons (player-vitality! current-player slot 1)
+				   (card-function I))
+			 (cons state (card-function I)))))))))
+
 (define revive
   (make-card "revive"
 			 (make-stack-item "revive"
@@ -546,26 +603,28 @@
 			 (make-r-stack-item "zombie"
 								func
 								(if-stack-depth
-								 (lambda (i)
-								   (make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
-													  func
-													  (if-stack-depth
-													   (lambda (x)
-														 (cond
-														  ((not (stack-item-val? i))
-														   (runtime-error "zombie expects a value; got a function (i)"))
-														  (else
-														   (let* ((idx (- 255 (stack-item-cont i)))
-																  (vitality (player-vitality other-player idx)))
-															 (cond
-															  ((not (valid-slot-id? idx))
-															   (runtime-error "zombie got invalid slot id (255-i)"))
-															  ((> vitality 0)
-															   (card-function I))
-															  (else
-															   (player-vitality! other-player idx -1)
-															   (player-field! other-player idx x)
-															   (card-function I))))))))))))))
+								 (lambda (state i)
+								   (cons
+									state
+									(make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
+													   func
+													   (if-stack-depth
+														(lambda (state x)
+														  (cond
+														   ((not (stack-item-val? i))
+															(cons state (runtime-error "zombie expects a value; got a function (i)")))
+														   (else
+															(let* ((idx (- 255 (stack-item-cont i)))
+																   (vitality (player-vitality state other-player idx)))
+															  (cond
+															   ((not (valid-slot-id? idx))
+																(cons state runtime-error "zombie got invalid slot id (255-i)")))
+															   ((> vitality 0)
+																(cons state (card-function I)))
+															   (else
+																(let* ((state-1 (player-vitality! state other-player idx -1))
+																	   (state-2 (player-field! state-1 other-player idx x)))
+																  (cons state-2 (card-function I))))))))))))))))
 
 (define start-state (lambda (ignored) (make-slot
                                        (card-function I)
@@ -596,25 +655,29 @@
 		cards)))
 
 										;  Get the field value for the given player and slot.
-(define (player-field player slot)
-  (let ((player-vector (vector-ref players player)))
+(define (player-field state player slot)
+  (let* ((player-vector (vector-ref state player)))
 	(slot-field (vector-ref player-vector slot))))
 
 										;  Get the vitality value for the given player and slot.
-(define (player-vitality player slot)
-  (let ((player-vector (vector-ref players player)))
+(define (player-vitality state player slot)
+  (let* ((player-vector (vector-ref state player)))
 	(slot-vitality (vector-ref player-vector slot))))
 
 										;  Set the field value for the given player and slot.
-(define (player-field! player slot value)
-  (let ((player-vector (vector-ref players player)))
-	(slot-field! (vector-ref player-vector slot) value)))
+(define (player-field! state player slot value)
+  (let* ((new-state (state-copy state))
+		 (player-vector (vector-ref new-state player)))
+	(slot-field! (vector-ref player-vector slot) value)
+	new-state))
 
 
 										;  Set the vitality value for the given player and slot.
-(define (player-vitality! player slot value)
-  (let ((player-vector (vector-ref players player)))
-	(slot-vitality! (vector-ref player-vector slot) value)))
+(define (player-vitality! state player slot value)
+  (let* ((new-state (state-copy state))
+		 (player-vector (vector-ref new-state player)))
+	(slot-vitality! (vector-ref player-vector slot) value)
+	new-state))
 
 (define (apply-card-to-slot card slot)
   (display (string-append
@@ -640,7 +703,7 @@
 
 (define (my-turn)
   (set! current-stack-depth 0)
-  (apply-zombies me)
+  (apply-zombies players me)
   (set! current-stack-depth 0)
   (do-self-turn))
 
@@ -649,36 +712,36 @@
   '())
 
 (define (eval-zombie player)
-  (lambda (slot)
-	(if (< (player-vitality player slot) 0)
-		(player-field! player
-					   slot
-					   (let ((zcont (stack-item-zcont (player-field player slot))))
-						 ((stack-item-cont (player-field player slot))
-						  (card-function I))
-						 (player-vitality! player slot 0)
-						 (card-function I))))))
+  (lambda (slot state)
+	(if (< (player-vitality state player slot) 0)
+		(let* ((zcont (stack-item-zcont (player-field state player slot)))
+			   (result-1 (zcont (card-function I)))
+			   (state-1 (player-vitality! (car result-1) player slot 0)))
+		  (player-field! state-1
+						 player
+						 slot
+						 (card-function I)))
+		state)))
 
-(define (apply-zombies player)
-  (map (eval-zombie player) (gen-indices (vector->list (vector-ref players player)))))
+(define (apply-zombies state player)
+  (set! players (fold (eval-zombie player) state (gen-indices (vector->list (vector-ref state player))))))
 
-(define (checkForError thing)
-  (if (equal? -1 current-stack-depth) (card-function I) thing)
-  )
+(define (checkForError result)
+  (if (equal? -1 current-stack-depth) (cons (car result) (card-function I)) result))
 
 (define (eval-card-to-slot card slot)
 										;  (display "Got card to slot")
-  (let* ((player-slot (player-field them slot))
-		 (result (checkForError ((stack-item-cont (card-function card)) player-slot))))
-	(player-field! them slot result))
+  (let* ((player-slot (player-field players them slot))
+		 (result (checkForError ((stack-item-cont (card-function card)) players player-slot))))
+	(set! players (player-field! (car result) them slot (cdr result))))
   (my-turn)
   read-action-type)
 
 (define (eval-slot-to-card slot card)
 										;  (display "Got slot to card")
-  (let* ((player-slot (player-field them slot))
-		 (result (checkForError ((stack-item-cont player-slot) (card-function card)))))
-	(player-field! them slot result))
+  (let* ((player-slot (player-field players them slot))
+		 (result (checkForError ((stack-item-cont player-slot) players (card-function card)))))
+	(set! players (player-field! (car result) them slot (cdr result))))
   (my-turn)
   read-action-type)
 
@@ -694,7 +757,7 @@
 
 (define (read-action-type action)
   (set! current-stack-depth 0)
-  (apply-zombies them)
+  (apply-zombies players them)
   (set! current-stack-depth 0)
   (cond
    ((equal? action #!eof)
@@ -731,7 +794,6 @@
 (define (go handler)
   (let ((next-handler (handler (read-line))))
     (if test-interp-mode (display-player-states))
-    (if test-derp-mode (compute-val-in-slot 0 254))
     (go next-handler)))
 
 (define (main args)
@@ -741,7 +803,6 @@
            (cond ((string=? config-me "0") (set! me 0) (set! them 1))
                  ((string=? config-me "1") (set! me 1) (set! them 0))
                  ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
-                 ((string=? config-me "n") (set! me 0) (set! them 1) (set! test-derp-mode #t))
                  (else (display "DIE IN A FIRE") (exit 1)))
            (go read-action-type)))))
 
@@ -763,5 +824,6 @@
 
 (define (find-largest-pow-2 v x)
   (if (> v (expt 2 x)) (- x 1) (find-largest-pow-2 v (+ x 1))))
+
 
 (main (command-line-arguments))
