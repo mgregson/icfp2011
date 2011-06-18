@@ -1,5 +1,14 @@
 #!/bin/bash
 
+if [[ "$#" -eq "1" ]]; then
+  ../../proto t < $1
+  if [[ "$?" != "0" ]]; then
+    echo "FAILED"
+  fi
+  exit 0
+fi
+
+
 FAILED=0
 for i in *.in
 do
