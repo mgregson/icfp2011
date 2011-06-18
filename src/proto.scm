@@ -116,7 +116,6 @@
                                         (if-stack-depth
                                          (lambda (x)
                                            (card-function I))))))
-                                                       (runtime-error "succ expects value"))))))))
                                          
 (define S (make-card "S"
 					 (make-stack-item "S"
@@ -143,31 +142,36 @@
 										func
 										(if-stack-depth
 										 (lambda (i)
-										   (cond ((valid-slot-id? i)
-												  (let ((vitality (player-vitality current-player i)))
-													(cond ((and (< vitality 65535) (> vitality 0))
-														   (player-vitality! current-player i
-																			 (+ vitality 1)))
-														  (else '())))
-												  (card-function I))
-												 (else
-												  (runtime-error "inc got invalid slot"))))))))
+										   (cond ((stack-item-val? i)
+												  (let ((idx (stack-item-cont i)))
+													(cond ((valid-slot-id? idx)
+														   (let ((vitality (player-vitality current-player idx)))
+															 (cond ((and (< vitality 65535) (> vitality 0))
+																	(player-vitality! current-player idx
+																					  (+ vitality 1)))
+																   (else '())))
+														   (card-function I))
+														  (else
+														   (runtime-error "inc got invalid slot")))))
+												 (else (runtime-error "inc expected value; got function"))))))))
 
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
 										(if-stack-depth
 										 (lambda (i)
-										   (let ((idx (- 255 i)))
-											 (cond ((valid-slot-id? idx)
-													(let ((vitality (player-vitality other-player idx)))
-													  (cond ((> vitality 0)
-															 (player-vitality! other-player idx
-																			   (- vitality 1)))
-															(else '()))
-													  (card-function I)))
-												   (else
-													(runtime-error "dec got invalid slot")))))))))
+										   (cond ((stack-item-val? i)
+												  (let ((idx (- 255 (stack-item-cont i))))
+													(cond ((valid-slot-id? idx)
+														   (let ((vitality (player-vitality other-player idx)))
+															 (cond ((> vitality 0)
+																	(player-vitality! other-player idx
+																					  (- vitality 1)))
+																   (else '()))
+															 (card-function I)))
+														  (else
+														   (runtime-error "dec got invalid slot")))))
+												 (else (runtime-error "dec expected value; got function"))))))))
 
 
 (define start-state (lambda (ignored) (make-slot
