@@ -9,10 +9,6 @@
   (vitality slot-vitality slot-vitality!))
 
 ;;Don't really need type, but for debugging pandas
-(define-record-type :error 
-  (error type)
-  error?
-  (type error-type error-type!))
 (define-record-type :card 
   (make-card name function)
   card?
@@ -26,8 +22,13 @@
   (type stack-item-type stack-item-type!)
   (cont stack-item-cont stack-item-cont!))
 
+
 (define func "function")
 (define val "value")
+(define (runtime-error str)
+  (set! current-stack-depth -1)
+  (card-function I)
+)
 
 (define (stack-item-val? item)
   (string=? val (stack-item-type item)))
@@ -36,10 +37,14 @@
 
 (define current-stack-depth 0)
 
+(define max-stack-depth 1000)
+
 (define (if-stack-depth f)
   (lambda (x)
     (set! current-stack-depth (+ 1 current-stack-depth))
-    (if (> current-stack-depth 1000) (lambda (i) (error "too deep"))
+    (if (or (> current-stack-depth (- max-stack-depth 1)) (equal? -1 current-stack-depth))
+        ;;We've gone too deep/it can't fit
+        (set! current-stack-depth -1)
         (f x))))
 
 (define (valid-slot-id? id)
@@ -68,7 +73,7 @@
                                                                      val
                                                                      new)))
                                                  (else (printf "succ expects a value\n")
-                                                       (lambda (i) (error "succ expects value")))))))))
+                                                       (runtime-error "succ expects value"))))))))
 
 (define succ (make-card "dbl"
                         (make-stack-item "dbl"
@@ -82,7 +87,7 @@
                                                                      val
                                                                      new)))
                                                  (else (printf "dbl expects a value\n")
-                                                       (lambda (i) (error "dbl expects value")))))))))
+                                                       (runtime-error "dbl expects value"))))))))
 
 (define succ (make-card "get"
                         (make-stack-item "get"
@@ -99,7 +104,7 @@
                                                           (else (printf "get expects valid slot id")
                                                                 (lambda (i) (error "get expects valid slot id"))))))
                                                   (else (printf "get expects a value\n")
-                                                        (lambda (i) (error "get expects value")))))))))
+                                                        (runtime-error "get expects value"))))))))
 
 (define put (make-card "put"
                        (make-stack-item "put"
@@ -107,7 +112,8 @@
                                         (if-stack-depth
                                          (lambda (x)
                                            (card-function I))))))
-
+                                                       (runtime-error "succ expects value"))))))))
+                                         
 (define S (make-card "S"
 					 (make-stack-item "S"
 									  func
@@ -203,16 +209,24 @@
 (define (do-self-turn)
   (display "Do some shit"))
 
+(define (checkForError thing)
+  (if (equal? -1 current-stack-depth) (card-function I) thing)
+)
+
 (define (eval-card-to-slot card slot)
   (display "Got card to slot")
-  (let ((player-slot (player-field them slot)))
-	(player-field! them slot ((stack-item-cont (card-function card)) player-slot)))
+  (let ((player-slot (player-field them slot))
+        (result (checkForError ((stack-item-cont (card-function card)) player-slot)))
+        )
+	(player-field! them slot result))
   read-action-type)
 
 (define (eval-slot-to-card slot card)
   (display "Got slot to card")
-  (let ((player-slot (player-field them slot)))
-	(player-field! them slot ((stack-item-cont player-slot) (card-function card))))
+  (letrec ((player-slot (player-field them slot))
+           (result (checkForError ((stack-item-cont player-slot) (card-function card))))
+           )
+	(player-field! them slot result))
   read-action-type)
 
 (define (read-acts-card card)
