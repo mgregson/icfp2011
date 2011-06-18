@@ -42,6 +42,9 @@
     (if (> current-stack-depth 1000) (lambda (i) (error "too deep"))
         (f x))))
 
+(define (valid-slot-id? id)
+  (and (<= id 255) (>= id 0)))
+
 (define I (make-card "I"
 					 (make-stack-item "I"
 									  func
@@ -80,7 +83,30 @@
                                                                      new)))
                                                  (else (printf "dbl expects a value\n")
                                                        (lambda (i) (error "dbl expects value")))))))))
-                                         
+
+(define succ (make-card "get"
+                        (make-stack-item "get"
+                                         func
+                                         (if-stack-depth
+                                          (lambda (i)
+                                           (cond ((stack-item-val? i)
+                                                  (let ((input (stack-item-cont i)))
+                                                    (cond ((valid-slot-id? input)
+                                                           (let ((result (player-field current-player input)))
+                                                             (make-stack-item (number->string new)
+                                                                              val
+                                                                              new)))
+                                                          (else (printf "get expects valid slot id")
+                                                                (lambda (i) (error "get expects valid slot id"))))))
+                                                  (else (printf "get expects a value\n")
+                                                        (lambda (i) (error "get expects value")))))))))
+
+(define put (make-card "put"
+                       (make-stack-item "put"
+                                        func
+                                        (if-stack-depth
+                                         (lambda (x)
+                                           (card-function I))))))
 
 (define S (make-card "S"
 					 (make-stack-item "S"
@@ -120,6 +146,9 @@
 
 (define me 0)
 (define them 1)
+
+(define current-player 1)
+(define other-player 0)
 
 										;  Given the name of a card and return the corresponding card record.
 (define (name-to-card name)
