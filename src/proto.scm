@@ -394,9 +394,11 @@
                                                         (else
                                                          (player-vitality! current-player
                                                                            other-idx
-                                                                           (max 65535
-                                                                                (+ other-v
-                                                                                   (floor (/ (* delta 11) 10))))))))))))))))))))))))
+                                                                           (inexact->exact
+																			(min 65535
+																				 (+ other-v
+																					(floor (/ (* delta 11) 10))))))
+														 (card-function I))))))))))))))))))))
 
 (define helpFuncZombie
   (if-stack-depth
@@ -692,6 +694,8 @@
   (apply-zombies them)
   (set! current-stack-depth 0)
   (cond
+   ((equal? action #!eof)
+	(exit 0))
    ((string=? action "1")
     read-acts-card)
    ((string=? action "2")
