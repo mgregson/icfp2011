@@ -136,6 +136,55 @@
                                                                                (lambda (x)
                                                                                  ((stack-item-cont ((stack-item-cont f) x))
                                                                                   ((stack-item-cont g) x)))))))))))))
+(define attack (make-card "attack" (make-stack-item "attack"
+                                                    func
+                                                    (if-stack-depth
+                                                     (lambda (i)
+                                                       (make-stack-item (string-append "attack" (stack-item-desc i) ")")
+                                                                        func
+                                                                        (if-stack-depth
+                                                                         (lambda (j)
+                                                                           (make-stack-item (string-append "attack(" 
+                                                                                                           (stack-item-desc i) 
+                                                                                                           ","
+                                                                                                           (stack-item-desc j)
+                                                                                                           ")")
+                                                                                            func
+                                                                                            (if-stack-depth
+                                                                                             (lambda (n)
+                                                                                               (if (or (not (stack-item-val? i)) 
+                                                                                                       (not (valid-slot-id (stack-item-cont i)))
+                                                                                                       (not (stack-item-val? n))
+                                                                                                       (not (integer? (stack-item-cont n)))
+                                                                                                       (not (stack-item-val? j))
+                                                                                                       (> (stack-item-cont n) (player-vitality self-player (stack-item-cont i)))
+                                                                                                       ) (runtime-error "attack failed")
+                                                                                                         (let ((jv (stack-item-cont j))
+                                                                                                               (iv (stack-item-cont i))
+                                                                                                               (nv (stack-item-cont v))
+                                                                                                               )
+                                                                                                           ;;Decrement our thing before checking j
+                                                                                                           (player-vitality! self-player (- (player-vitality self-player iv)
+                                                                                                                                            nv
+                                                                                                                                          ))
+                                                                                                           ;;Make sure j is valid
+                                                                                                           (if (not (valid-slot-id jv)) 
+                                                                                                               (runtime-error "attack failed, invalid j")
+                                                                                                               (let
+                                                                                                                   ((opjsv (player-vitality other-player (- 255 jv))))
+                                                                                                                 (player-vitality! other-player 
+                                                                                                                                   (- 255 jv) 
+                                                                                                                                   (max (min 0 opjsv)
+                                                                                                                                        (-
+                                                                                                                                         opjsv
+                                                                                                                                         (floor (/ (* 9 nv) 10))
+                                                                                                                                         ))
+                                                                                                                                   )
+                                                                                                                 )
+                                                                                                               )
+                                                                                                           
+
+                                                                                                           )))))))))))))
 
 (define inc (make-card "inc"
 					   (make-stack-item "inc"
