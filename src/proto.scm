@@ -56,6 +56,7 @@
 			 (> x 0)))
 
 (define Ifun (if-stack-depth (lambda (x) x)))
+
 (define I (make-card "I"
 					 (make-stack-item "I"
 									  func
@@ -67,6 +68,7 @@
 										 0
                                          0
                                          )))
+
 (define succFun (if-stack-depth
                  (lambda (n)
                    (cond ((stack-item-val? n)
@@ -77,6 +79,7 @@
                                              new)))
                          (else (printf "succ expects a value\n")
                                (runtime-error "succ expects value")))) ))
+
 (define succ (make-card "succ"
                         (make-stack-item "succ"
                                          func
@@ -94,12 +97,14 @@
                                              new)))
                          (else (printf "dbl expects a value\n")
                                (runtime-error "dbl expects value"))))))
+
 (define dbl (make-card "dbl"
                         (make-stack-item "dbl"
                                          func
                                          dblFunc
                                          dblFunc
                                          )))
+
 (define getFunc (if-stack-depth
                  (lambda (i)
                    (cond ((stack-item-val? i)
@@ -113,15 +118,18 @@
                                         (lambda (i) (error "get expects valid slot id"))))))
                          (else (printf "get expects a value\n")
                                (runtime-error "get expects value"))))))
+
 (define get (make-card "get"
                         (make-stack-item "get"
                                          func
                                          getFunc
                                          getFunc
                                          )))
+
 (define putFunc (if-stack-depth
                  (lambda (x)
                    (card-function I))))
+
 (define put (make-card "put"
                        (make-stack-item "put"
                                         func
@@ -154,6 +162,7 @@
                                       sFunc
                                       sFunc
                                       )))
+
 (define incFunc (if-stack-depth
                  (lambda (i)
                    (cond ((stack-item-val? i)
@@ -168,6 +177,7 @@
                                   (else
                                    (runtime-error "inc got invalid slot")))))
                          (else (runtime-error "inc expected value; got function"))))))
+
 (define inc (make-card "inc"
 					   (make-stack-item "inc"
 										func
@@ -189,11 +199,13 @@
                      (runtime-error "dec got invalid slot")))))
            (else (runtime-error "dec expected value; got function")))))
 )
+
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
 										decFunc
                                         decFunc)))
+
 (define attackFunc
                                                    (if-stack-depth
                                                      (lambda (i)
@@ -241,6 +253,7 @@
                                                                                                            
 
                                                                                                            )))))))))))
+
 (define attack (make-card "attack" (make-stack-item "attack"
                                                     func attackFunc attackFunc)))
 (define helpFunc
@@ -291,10 +304,12 @@
                                                                            (max 65535
                                                                                 (+ other-v
                                                                                    (floor (/ (* delta 11) 10))))))))))))))))))))))))
+
 (define help (make-card "help"
 						(make-stack-item "help"
 										 func
                                          helpFunc helpFunc)))
+
 (define kFunc (if-stack-depth
                   (lambda (f)
                     (make-r-stack-item (string-append
@@ -305,6 +320,7 @@
                                      (if-stack-depth
                                        (lambda (g)
                                          ((stack-item-cont f))))))))
+
 (define K (make-card "K"
              (make-stack-item "K"
                 func
@@ -457,17 +473,15 @@
 
 (define (eval-card-to-slot card slot)
   (display "Got card to slot")
-  (let ((player-slot (player-field them slot))
-        (result (checkForError ((stack-item-cont (card-function card)) player-slot)))
-        )
+  (let* ((player-slot (player-field them slot))
+		 (result (checkForError ((stack-item-cont (card-function card)) player-slot))))
 	(player-field! them slot result))
   read-action-type)
 
 (define (eval-slot-to-card slot card)
   (display "Got slot to card")
-  (letrec ((player-slot (player-field them slot))
-           (result (checkForError ((stack-item-cont player-slot) (card-function card))))
-           )
+  (let* ((player-slot (player-field them slot))
+		 (result (checkForError ((stack-item-cont player-slot) (card-function card)))))
 	(player-field! them slot result))
   read-action-type)
 
