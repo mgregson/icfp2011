@@ -418,6 +418,14 @@
 (define (do-self-turn)
   (display "Do some shit"))
 
+(define (eval-zombie player)
+  (lambda (slot)
+	(if (< (player-vitality player slot) 0)
+		'())))
+
+(define (apply-zombies player)
+  (map (eval-zombie player) (gen-indices (vector->list (vector-ref players player)))))
+
 (define (checkForError thing)
   (if (equal? -1 current-stack-depth) (card-function I) thing)
 )
