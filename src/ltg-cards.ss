@@ -122,7 +122,7 @@
 						 func
                          (if (procedure? (stack-item-cont f)) 
                              (if (equal? (stack-item-desc f) "I")
-                                 0
+                                 1
                                  5;;If its a procedure yay
                              )
                              0;;If its not nay
@@ -257,7 +257,7 @@
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
-                                        5;;happyness of 5
+                                        4;;happyness of 4
 										decFunc
                                         decFuncZombie)))
 
@@ -268,7 +268,7 @@
 	  state
 	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
 						 func
-                         5;;happyness of 5
+                         4;;happyness of 4
 						 (if-stack-depth
 						  (lambda (state j)
 							(cons
