@@ -67,6 +67,8 @@
                                        (card-function I)
                                        10000)))
 
+(define path-memory '())
+
 (define (makeplayervector) 
   (list->vector (unfold zero? start-state (lambda (x) (- x 1)) 256 )))
 
@@ -465,7 +467,7 @@
       ((playeraslist (vector->list player))
        (nonZombieSlots (filter (lambda (s) (not (is-zombie-slot s))) playeraslist))
        (nonDeadSlots (filter (lambda (s) (not (is-dead-slot s))) nonZombieSlots))
-       (alive (count is-dead-slot playeraslist))
+       (alive (count (lambda (x) (not (is-dead-slot x))) playeraslist))
        (zombieCount (count is-zombie-slot playeraslist))
        (cardPresentCount (count has-fun-card nonZombieSlots))
        (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 (delete-duplicates nonDeadSlots (lambda (x y) (equal? (slot-field x) (slot-field y))))))
@@ -473,33 +475,40 @@
        (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)) 
        (vitalities (map (lambda (x) (slot-vitality x)) playeraslist))
        )
-    (- (+ (* 6000 alive) (* 0 cardPresentCount) (* 40 vitality) (* 2 happyness) (* 80 (fold min 99999 vitalities) ) )
+    (- (+ (* 60 alive) (* 0 cardPresentCount) (* 4 vitality) (* 3 happyness) (* 8 (fold min 99999 vitalities) ) )
        (+ (* 10 zombieCount) (* 25 zombieCardPresentCount)))))
 
 (define (pick-best-path paths)
-  (fold
-   (lambda (current best)
-	 (if (equal? best 'worst-path)
-		 current
-		 (let ((fitness-best (fitness-of-state (state-walk-state best)))
-			   (fitness-curr (fitness-of-state (state-walk-state current))))
-		   (cond ((> fitness-curr fitness-best)
-				  current)
-				 ((< fitness-curr fitness-best)
-				  best)
-				 (else
-				  (cond ((< (length (state-walk-k current)) (length (state-walk-k best)))
-						 current)
-						(else best)))))))
-   'worst-path
-   paths))
+  (let ((best-path (fold
+					(lambda (current best)
+					  (if (equal? best 'worst-path)
+						  current
+						  (let* ((fitness-best (fitness-of-state (state-walk-state best)))
+								 (fitness-curr (fitness-of-state (state-walk-state current))))
+							(cond ((> fitness-curr fitness-best)
+								   current)
+								  ((< fitness-curr fitness-best)
+								   best)
+								  (else
+								   (cond ((< (length (state-walk-k current)) (length (state-walk-k best)))
+										  current)
+										 (else best)))))))
+					'worst-path
+					paths)))
+	(cond ((null? path-memory)
+		   (set! path-memory (cdr (state-walk-k best-path)))
+		   (state-walk-k best-path))
+		  (else (let ((c-path-mem path-memory))
+				  (set! path-memory (cdr path-memory))
+				  c-path-mem)))))
+
 
 (define (apply-state-walk state state-walk)
-  (dbg-printf "target state: {\n")
-  (display-player-states (state-walk-state state-walk))
-  (dbg-printf "}\n")
-  (dbg-printf "target path: ~a\n" (map (lambda (x) (list (move-type x) (card-name (move-card x)) (move-slot x))) (state-walk-k state-walk)))
-  (let ((move (car (state-walk-k state-walk))))
+;  (dbg-printf "target state: {\n")
+'  (display-player-states (state-walk-state state-walk))
+'  (dbg-printf "}\n")
+  (dbg-printf "target path: ~a\n" (map (lambda (x) (list (move-type x) (card-name (move-card x)) (move-slot x))) state-walk))
+  (let ((move (car state-walk)))
 	(cond ((equal? 'cs (move-type move))
 		   (acts state (move-card move) (move-slot move)))
 		  (else
