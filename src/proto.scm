@@ -163,6 +163,7 @@
   (if (equal? -1 current-stack-depth) (cons (car result) (card-function I)) result))
 
 (define (eval-card-to-slot state card slot)
+  (set! current-stack-depth 0)
 										;  (display "Got card to slot")
   (let* ((player-slot (player-field state them slot))
 		 (result (checkForError (if (procedure? (stack-item-cont (card-function card)))
@@ -175,6 +176,7 @@
 	(cons new-state read-action-type)))
 
 (define (eval-slot-to-card state slot card)
+  (set! current-stack-depth 0)
 										;  (display "Got slot to card")
   (let* ((player-slot (player-field state them slot))
 		 (result (checkForError (if (procedure? (stack-item-cont player-slot))
@@ -314,13 +316,16 @@
   
 
 (define (possibilities-from-state-d state maxdepth)
-  (delete-duplicates 
+  (let ((results (delete-duplicates 
    (append 
-    (list );;(heuristicSearch state (+ 2 maxdepth) 1) 
+    (heuristicSearch state (+ 2 maxdepth) 1) 
     (depthfirst state maxdepth 1))
    (lambda (x y) (equal? (state-walk-state x)
                          (state-walk-state y)))
-   )  
+   )))
+  (set! current-stack-depth 0)
+  results
+  )
 )
 (define (depthfirst state maxdepth curdepth)
   (let ((newstates (possibilities-from-state  state)))
@@ -336,10 +341,12 @@
 (define (heuristicSearch state maxdepth curdepth)
   (let* ((newstates (possibilities-from-state  state)) 
         (newstatesScores (zip (map (lambda (s) (fitness-of-state (state-walk-state s))) newstates) newstates))
-        (newtoexplore (take  (qsort newstatesScores car) 100) )
+        (newtoexplore (map cadr (take  (qsort newstatesScores car) (min 3 (length newstatesScores)) )) );;4 should be safe, but 3 to be cautious
         )
     (if (equal? curdepth maxdepth) newstates
-        (fold append (list ) (map (lambda (x) (heuristicSearch x maxdepth (+ 1 curdepth))))))
+        (fold append newtoexplore (map (lambda (x) (map (lambda (j) (state-walk-k! j (append (state-walk-k x)
+                                                                                        (state-walk-k j)) )
+                                                           j) (heuristicSearch (state-walk-state x) maxdepth (+ 1 curdepth)))) newtoexplore)))
         
 ))
 (define (flatten x)
