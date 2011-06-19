@@ -135,8 +135,8 @@
 (define (my-turn state)
   (set! current-stack-depth 0)
   (let ((state-1 (apply-zombies state me)))
-	(set! current-stack-depth 0)
-	(do-self-turn state-1)))
+  (set! current-stack-depth 0)
+  (do-self-turn state-1)))
 
 (define (do-self-turn state)
 										; (display "Do some shit"))
@@ -174,8 +174,9 @@
                                 ;;Ok?
                                 (cons state (card-function I)))
                   ))
-		 (new-state (player-field! (car result) player slot (cdr result))))
-	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
+		 (new-state (player-field! (car result) player slot (cdr result)))
+     (alt-state (if (= player them) (my-turn new-state) new-state)))
+	(cons alt-state (lambda (s line) (read-action-type alt-state line)))))
 
 (define (eval-slot-to-card state slot card player)
   (set! current-stack-depth 0)
@@ -188,8 +189,9 @@
                                     ;;Ok?
                                     (cons state (card-function I)))
                                     ))
-		 (new-state (player-field! (car result) player slot (cdr result))))
-	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
+		 (new-state (player-field! (car result) player slot (cdr result)))
+     (alt-state (if (= player them) (my-turn new-state) new-state)))
+	(cons alt-state (lambda (s line) (read-action-type alt-state line)))))
 
 (define (read-acts-card state card)
   (cons state
@@ -258,7 +260,7 @@
   (cond ((not (equal? (length args) 1)) (printf "Usage: <fn> <player-number>\n") (exit 1))
         (else
          (let ((config-me (car args)))
-           (cond ((string=? config-me "0") (set! me 0) (set! them 1))
+           (cond ((string=? config-me "0") (set! me 0) (set! them 1) (set! players (my-turn players)))
                  ((string=? config-me "1") (set! me 1) (set! them 0))
                  ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
                  ((string=? config-me "n") (set! me 0) (set! them 1) (set! test-derp-mode #t))
