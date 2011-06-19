@@ -605,7 +605,7 @@
   (make-card "zombie"
 			 (make-r-stack-item "zombie"
 								func
-                                3;;happyness of 3
+                                1;;happyness of 3
 								(if-stack-depth
 								 (lambda (state i)
 								   (cons
