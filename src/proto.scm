@@ -138,7 +138,7 @@
   (lambda (slot state)
 	(if (< (player-vitality state player slot) 0)
 		(let* ((zcont (stack-item-zcont (player-field state player slot)))
-			   (result-1 (zcont (card-function I)))
+			   (result-1 (zcont state (card-function I)))
 			   (state-1 (player-vitality! (car result-1) player slot 0)))
 		  (player-field! state-1
 						 player
