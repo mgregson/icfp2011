@@ -5,9 +5,7 @@
 (display-player-states players)
 
 (set! players (car (eval-card-to-slot players zombie 255)))
-(display-player-states players)
 (set! players (car (eval-slot-to-card players 255 zero)))
-(display-player-states players)
 
 (if (and (string=? (stack-item-desc (player-field players 0 0))
 									 "zero")
