@@ -7,12 +7,17 @@
 (use srfi-1)
 (use extras)
 
+(define-record-type :move
+  (make-move type card slot)
+  move?
+  (type move-type move-type!)
+  (card move-card move-card!)
+  (slot move-slot move-slot!)
+)
 (define-record-type :muruh
-  (make-muruh type slot card state)
+  (make-muruh k state)
   muruh?
-  (type muruh-type muruh-type!)
-  (slot muruh-slot muruh-slot!)
-  (card muruh-card muruh-card!)
+  (k muruh-k muruh-k!)
   (state muruh-state muruh-state!)
 )
 
@@ -224,7 +229,7 @@
 
 (define (display-player-states state)
   (vector-for-each show-interesting-states state)
-  (printf "possible muruh are ~a\n" (possibilities-from-state state))
+  (printf "possible muruh are ~a\n" (possibilities-from-state-d state 2))
   )
 
 (define (go handler state)
@@ -284,6 +289,17 @@
   (not (equal? (stack-item-desc (slot-field slot)) (card-name I)))
 )
 
+(define (possibilities-from-state-d state maxdepth)
+  (if (equal? maxdepth 1)
+      (possibilities-from-state state)
+      (map (lambda (curMuruh) 
+             (let ((possibilites (possibilities-from-state-d (muruh-state curMuruh) (- maxdepth 1))))
+               (map (lambda (x) (muruh-k! x (append (muruh-k curMuruh) (muruh-k x))))
+                    possibilites
+                    )))
+           (possibilities-from-state state)))
+)
+
 (define (possibilities-from-state state)
   (let*
       ((measlist (vector->list (vector-ref state me)) )
@@ -292,8 +308,8 @@
        )
     (delete-duplicates (concatenate! (map (lambda (slot)  
                                             (concatenate! (map (lambda (card) 
-                                                                 (list (make-muruh 'cs (car slot) card (car (eval-card-to-slot state card (car slot) )))
-                                                                       (make-muruh 'sc (car slot) card (car (eval-slot-to-card state (car slot) card)))) 
+                                                                 (list (make-muruh (list (make-move 'cs (car slot) card)) (car (eval-card-to-slot state card (car slot) )))
+                                                                       (make-muruh (list (make-move 'sc (car slot) card)) (car (eval-slot-to-card state (car slot) card)))) 
                                                                  )
                                                  cards))) dedupme)) (lambda (x y) (equal? (muruh-state x) (muruh-state y))))
     )
