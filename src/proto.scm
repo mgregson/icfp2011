@@ -7,6 +7,16 @@
 (use srfi-1)
 (use extras)
 
+(define (qsort e f)
+  (if (or (null? e) (<= (length e) 1)) e
+      (let loop ((left '()) (right '())
+                   (pivot (car e)) (rest (cdr e)))
+            (if (null? rest)
+                (append (append (qsort left f) (list pivot)) (qsort right f))
+               (if (>= (f (car rest)) (f pivot));;reverse of normal eh
+                    (loop (append left (list (car rest))) right pivot (cdr rest))
+                    (loop left (append right (list (car rest))) pivot (cdr rest)))))))
+
 (define-record-type :move
   (make-move type card slot)
   move?
@@ -228,7 +238,7 @@
 (define (display-player-states state)
   (vector-for-each show-interesting-states state)
   (printf "possible state walks are ~a\n" 
-          (possibilities-from-state-d state 3)
+          (possibilities-from-state-d state 2)
           ;;(state-space-bfs '() (possibilities-from-state state) 30) 
 ))
 
@@ -304,26 +314,30 @@
   
 
 (define (possibilities-from-state-d state maxdepth)
-  (if (equal? maxdepth 1)
-      (possibilities-from-state state)
-      (flatten 
-      (map (lambda (cur-state-walk) 
-             (let* ((possibilites (possibilities-from-state-d (state-walk-state cur-state-walk)
-															 (- maxdepth 1))) 
-                    (fnar (delete-duplicates 
-                                             (lambda (x y) (equal? (state-walk-state x)
-											 (state-walk-state y)))
-                                             )
-                    )
-                    (append fnar (map (lambda (x)
-					  (state-walk-k! x (append (state-walk-k cur-state-walk)
-											   (state-walk-k x)))
-                      x
-                      )
-                    ;;possibilites
-                    fnar
-                    ))))
-           (possibilities-from-state state)))))
+  (delete-duplicates 
+   (append (heuristicSearch state (+ 2 maxdepth) 1) (depthfirst state maxdepth 1))
+   (lambda (x y) (equal? (state-walk-state x)
+                         (state-walk-state y)))
+   )  
+)
+(define (depthfirst state maxdepth curdepth)
+  (let ((newstates (possibilities-from-state  state)))
+    (if (equal? curdepth maxdepth) newstates
+        (fold append (list ) (map 
+                              (lambda (curstatewalk) (depthfirst (state-walk-state curstatewalk) maxdepth (+ 1 curdepth)))
+                              newstates
+                              ))
+        )
+))
+(define (heuristicSearch state maxdepth curdepth)
+  (let* ((newstates (possibilities-from-state  state)) 
+        (newstatesScores (zip (map (lambda (s) (fitness-of-state (state-walk-state s))) newstates) newstates))
+        (newtoexplore (take  (qsort newstatesScores car) 100) )
+        )
+    (if (equal? curdepth maxdepth) newstates
+        (fold append (list ) (map (lambda (x) (heuristicSearch x maxdepth (+ 1 curdepth))))))
+        
+))
 (define (flatten x)
     (cond ((null? x) '())
           ((not (pair? x)) (list x))
