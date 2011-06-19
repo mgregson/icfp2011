@@ -6,7 +6,7 @@ TARGETS = debug echobot run
 
 PROTO_OBJECTS = src/proto.o src/ltg-cards.o src/ltg-stack.o
 
-TESTS = copy.test
+TESTS = copy.test zombie.test
 
 all: $(TARGETS)
 
@@ -45,3 +45,6 @@ copy.test: $(PROTO_OBJECTS) src/test/copy.o
 	$(CSC) -o src/test/$@ $^
 	echo $(subst .test,,$@)":" `./src/test/$@`
 
+zombie.test: $(PROTO_OBJECTS) src/test/zombie.o
+	$(CSC) -o src/test/$@ $^
+	echo $(subst .test,,$@)":" `./src/test/$@`

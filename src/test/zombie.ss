@@ -1,0 +1,15 @@
+(declare (uses ltg-proto))
+(declare (uses ltg-cards))
+(declare (uses ltg-stack))
+(set! players (player-field! (player-vitality! players 0 0 0) 1 255 (make-r-stack-item "255" val 1 255)))
+(display-player-states players)
+
+(set! players (car (eval-card-to-slot players zombie 255)))
+(set! players (car (eval-slot-to-card players 255 zero)))
+
+(if (and (string=? (stack-item-desc (player-field players 0 0))
+									 "zero")
+				 (equal? (player-vitality players 0 0)
+								 -1))
+		(printf "PASS\n")
+		(printf "FAIL\n"))
