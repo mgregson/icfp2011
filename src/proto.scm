@@ -331,4 +331,31 @@
       )
 ))
 
+(define (pick-best-path paths)
+  (fold
+   (lambda (current best)
+	 (if (equal? best 'worst-path)
+		 current
+		 (let ((fitness-best (fitness-of-player (muruh-state best)))
+			   (fitness-curr (fitness-of-player (muruh-state current))))
+		   (cond ((> fitness-curr fitness-best)
+				  current)
+				 ((< fitness-curr fitness-best)
+				  best)
+				 (else
+				  (cond ((< (muruh-k current) (muruh-k best))
+						 current)
+						(else best)))))))
+   'worst-path
+   paths))
+
+(define (apply-muruh muruh)
+  (let ((move (car (muruh-k muruh))))
+	(cond ((equal? 'cs (move-type move))
+		   (acts (move-card move) (move-slot)))
+		  (else
+		   (astc (move-slot move) (move-card move))))))
+		   
+
+
 ;(main (command-line-arguments))
