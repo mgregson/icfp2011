@@ -300,7 +300,7 @@
 																  (iv (stack-item-cont i))
 																  (nv (stack-item-cont n))
 																  ;;Decrement our thing before checking j
-																  (state-1 (player-vitality! state current-player iv (- (player-vitality state (current-player) iv) nv))))
+																  (state-1 (player-vitality! state current-player iv (- (player-vitality state current-player iv) nv))))
 															 ;;Make sure j is valid
 															 (if (not (valid-slot-id? (- 255 jv))) 
 																 (cons state-1 (runtime-error "attack failed, invalid j"))
