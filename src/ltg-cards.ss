@@ -525,7 +525,7 @@
 		 (if (<= vitality 0)
 			 (cons (player-vitality! state current-player slot 1)
 				   (card-function I))
-			 (cons state card-function I))))))))
+			 (cons state (card-function I)))))))))
 
 (define reviveFuncZombie
   (if-stack-depth
