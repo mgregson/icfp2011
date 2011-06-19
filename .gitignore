@@ -2,3 +2,5 @@ proto
 echobot
 src/*.o
 src/test/*.test
+debug
+run

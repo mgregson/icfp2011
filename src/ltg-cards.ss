@@ -14,6 +14,9 @@
   (set! current-stack-depth -1)
   (card-function I))
 
+(define (dbg-printf . params)
+  (apply printf params))
+
 (define Ifun (if-stack-depth (lambda (state x) (cons state x))))
 
 (define I (make-card "I"
@@ -41,7 +44,7 @@
    												val
                                                 2;;happyness of 2 [same for all values]
 												new))))
-                         (else (printf "succ expects a value\n")
+                         (else (dbg-printf "succ expects a value\n")
                                (cons state (runtime-error "succ expects value")))) )))
 
 (define succ (make-card "succ"
@@ -63,7 +66,7 @@
 												val
                                                 2;;happyness of 2 [same for all values]
 												new))))
-                         (else (printf "dbl expects a value\n")
+                         (else (dbg-printf "dbl expects a value\n")
                                (cons state (runtime-error "dbl expects value")))))))
 
 (define dbl (make-card "dbl"
@@ -81,9 +84,9 @@
                             (cond ((valid-slot-id? input)
                                    (let ((result (player-field state current-player input)))
 									 (cons state result)))
-                                  (else (printf "get expects valid slot id")
+                                  (else (dbg-printf "get expects valid slot id")
                                         (cons state (runtime-error "get expects valid slot id"))))))
-                         (else (printf "get expects a value\n")
+                         (else (dbg-printf "get expects a value\n")
                                (cons state (runtime-error "get expects value")))))))
 
 (define get (make-card "get"
@@ -113,7 +116,10 @@
 	  state
 	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
 						 func
-                         5;;happyness of 5
+                         (if (procedure? (stack-item-cont f)) 
+                             5;;If its a procedure yay
+                             -1;;If its not nay
+                         )
 						 (if-stack-depth
 						  (lambda (state g)
 							(cons
@@ -124,16 +130,21 @@
 															   (stack-item-desc g)
 															   ")")
 												func
-                                                6;;happyness of 6
-												(if-stack-depth
+                                                (if (and (procedure? (stack-item-cont f)) (procedure? (stack-item-cont g)))  
+                                                    6;;If its a procedure yay
+                                                    -1;;If its not nay
+                                                )
+                                                (if-stack-depth
 												 (lambda (state x)
-												   (let* ((fx ((stack-item-cont f) state x))
+                                                   (if (not (procedure? (stack-item-cont f)))
+                                                       (cons state (runtime-error "fnure"))
+                                                       (let* ((fx ((stack-item-cont f) state x))
 														  (fx-state (car fx))
 														  (fx-frame (cdr fx))
 														  (gx ((stack-item-cont g) fx-state x))
 														  (gx-state (car gx))
 														  (gx-frame (cdr gx)))
-													 ((stack-item-cont fx-frame) state gx-frame)))) 
+													 ((stack-item-cont fx-frame) state gx-frame)))))
                                                  (if-stack-depth
                                                   (lambda (state x)
                                                     (let* ((fx ((stack-item-zcont f) state x))
@@ -525,7 +536,7 @@
 		 (if (<= vitality 0)
 			 (cons (player-vitality! state current-player slot 1)
 				   (card-function I))
-			 (cons state card-function I))))))))
+			 (cons state (card-function I)))))))))
 
 (define reviveFuncZombie
   (if-stack-depth

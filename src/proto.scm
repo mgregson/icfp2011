@@ -7,6 +7,20 @@
 (use srfi-1)
 (use extras)
 
+(define-record-type :move
+  (make-move type card slot)
+  move?
+  (type move-type move-type!)
+  (card move-card move-card!)
+  (slot move-slot move-slot!)
+)
+(define-record-type :muruh
+  (make-muruh k state)
+  muruh?
+  (k muruh-k muruh-k!)
+  (state muruh-state muruh-state!)
+)
+
 (define-record-type :slot
   (make-slot field vitality)
   slot?
@@ -143,7 +157,11 @@
 (define (eval-card-to-slot state card slot)
 										;  (display "Got card to slot")
   (let* ((player-slot (player-field state them slot))
-		 (result (checkForError ((stack-item-cont (card-function card)) state player-slot)))
+		 (result (checkForError (if (procedure? (stack-item-cont (card-function card)))
+                  ((stack-item-cont (card-function card)) state player-slot) 
+                                ;;Ok?
+                                (cons state (card-function I)))
+                  ))
 		 (new-state (player-field! (car result) them slot (cdr result))))
 	(my-turn)
 	(cons new-state read-action-type)))
@@ -151,7 +169,11 @@
 (define (eval-slot-to-card state slot card)
 										;  (display "Got slot to card")
   (let* ((player-slot (player-field state them slot))
-		 (result (checkForError ((stack-item-cont player-slot) state (card-function card))))
+		 (result (checkForError (if (procedure? (stack-item-cont player-slot))
+                                    ((stack-item-cont player-slot) state (card-function card)) 
+                                    ;;Ok?
+                                    (cons state (card-function I)))
+                                    ))
 		 (new-state (player-field! (car result) them slot (cdr result))))
 	(my-turn)
 	(cons new-state read-action-type)))
@@ -206,7 +228,9 @@
 	  (vfe f (vector->list vec))))
 
 (define (display-player-states state)
-  (vector-for-each show-interesting-states state))
+  (vector-for-each show-interesting-states state)
+  (printf "possible muruh are ~a\n" (possibilities-from-state-d state 2))
+  )
 
 (define (go handler state)
   (let* ((input (read-line))
@@ -264,18 +288,74 @@
 (define (has-fun-card slot)
   (not (equal? (stack-item-desc (slot-field slot)) (card-name I)))
 )
+
+(define (possibilities-from-state-d state maxdepth)
+  (if (equal? maxdepth 1)
+      (possibilities-from-state state)
+      (map (lambda (curMuruh) 
+             (let ((possibilites (possibilities-from-state-d (muruh-state curMuruh) (- maxdepth 1))))
+               (map (lambda (x) (muruh-k! x (append (muruh-k curMuruh) (muruh-k x))))
+                    possibilites
+                    )))
+           (possibilities-from-state state)))
+)
+
+(define (possibilities-from-state state)
+  (let*
+      ((measlist (vector->list (vector-ref state me)) )
+       (measlistindex (zip (gen-indices measlist) measlist))
+       (dedupme (delete-duplicates measlistindex (lambda (x y) (equal? (cdr x) (cdr y)))))
+       )
+    (delete-duplicates (concatenate! (map (lambda (slot)  
+                                            (concatenate! (map (lambda (card) 
+                                                                 (list (make-muruh (list (make-move 'cs (car slot) card)) (car (eval-card-to-slot state card (car slot) )))
+                                                                       (make-muruh (list (make-move 'sc (car slot) card)) (car (eval-slot-to-card state (car slot) card)))) 
+                                                                 )
+                                                 cards))) dedupme)) (lambda (x y) (equal? (muruh-state x) (muruh-state y))))
+    )
+)
+
 (define (fitness-of-player player)
   (let*
       ((playeraslist (vector->list player))
+       (nonZombieSlots (filter (lambda (s) (not (is-zombie-slot s))) playeraslist))
        (alive (count is-dead-slot playeraslist))
        (zombieCount (count is-zombie-slot playeraslist) )
-       (cardPresentCount (count has-fun-card (filter (lambda (s) (not (is-zombie-slot s))) playeraslist)))
+       (cardPresentCount (count has-fun-card nonZombieSlots))
+       (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 nonZombieSlots))
        (zombieCardPresentCount (count has-fun-card (filter (lambda (s) (is-zombie-slot s)) playeraslist)))
        (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist) )
        )
-    (- (+ (* 6000 alive) (* 100 cardPresentCount) vitality )
+    (- (+ (* 6000 alive) (* 10 cardPresentCount) vitality (* 100 happyness) )
        (+ (* 10 zombieCount) (* 50 zombieCardPresentCount) )
       )
 ))
+
+(define (pick-best-path paths)
+  (fold
+   (lambda (current best)
+	 (if (equal? best 'worst-path)
+		 current
+		 (let ((fitness-best (fitness-of-player (muruh-state best)))
+			   (fitness-curr (fitness-of-player (muruh-state current))))
+		   (cond ((> fitness-curr fitness-best)
+				  current)
+				 ((< fitness-curr fitness-best)
+				  best)
+				 (else
+				  (cond ((< (muruh-k current) (muruh-k best))
+						 current)
+						(else best)))))))
+   'worst-path
+   paths))
+
+(define (apply-muruh muruh)
+  (let ((move (car (muruh-k muruh))))
+	(cond ((equal? 'cs (move-type move))
+		   (acts (move-card move) (move-slot)))
+		  (else
+		   (astc (move-slot move) (move-card move))))))
+		   
+
 
 ;(main (command-line-arguments))
