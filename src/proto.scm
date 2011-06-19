@@ -400,7 +400,7 @@
 														((> delta my-v)
 														 (cons state (runtime-error "help expected n < vitality i")))
 														(else
-														 (let ((state-1 (player-vitality! state-1 current-player my-idx (- my-v delta))))
+														 (let ((state-1 (player-vitality! state current-player my-idx (- my-v delta))))
 														   (cond
 															((not (stack-item-val? j))
 															 (cons state-1 (runtime-error "help expected value; got function (j)")))
