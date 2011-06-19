@@ -2,7 +2,7 @@ CSCFLAGS = -O2
 
 CSC = csc $(CSCFLAGS)
 
-TARGETS = proto echobot
+TARGETS = debug echobot run
 
 PROTO_OBJECTS = src/proto.o src/ltg-cards.o src/ltg-stack.o
 
@@ -12,7 +12,10 @@ all: $(TARGETS)
 
 test: $(TESTS)
 
-proto: $(PROTO_OBJECTS) src/runner.o
+run: $(PROTO_OBJECTS) src/runner.o
+	$(CSC) -o $@ $^
+
+debug: $(PROTO_OBJECTS) src/debug.o
 	$(CSC) -o $@ $^
 
 echobot: src/echobot.o
