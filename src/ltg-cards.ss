@@ -11,6 +11,7 @@
   (function card-function card-function!))
 
 (define (runtime-error str)
+  (dbg-printf "runtime error: ~a\n" str)
   (set! current-stack-depth -1)
   (card-function I))
 
@@ -137,7 +138,7 @@
                                                 (if-stack-depth
 												 (lambda (state x)
                                                    (if (not (procedure? (stack-item-cont f)))
-                                                       (cons state (runtime-error "fnure"))
+                                                       (cons state (runtime-error "S got value; expected function (f)"))
                                                        (let* ((fx ((stack-item-cont f) state x))
 														  (fx-state (car fx))
 														  (fx-frame (cdr fx))
