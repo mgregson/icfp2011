@@ -224,13 +224,13 @@
 	 (else (display "YOU FUCKING BASTARD") (cons state-1 read-action-type)))))
 
 (define (show-interesting-states p player)
-  (printf "player: ~a\n" p)
+  (dbg-printf "player: ~a\n" p)
   (dbg-printf "current stack depth ~a\n" current-stack-depth)
   (dbg-printf "current fitness value ~a\n" (fitness-of-player player))
   (vector-for-each (lambda (i slot)
                      (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
                                       (equal? (slot-vitality slot) 10000)))
-                            (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
+                            (dbg-printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
                    player))
 
 (define (gen-indices lst)
