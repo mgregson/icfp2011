@@ -11,6 +11,7 @@
   (function card-function card-function!))
 
 (define (runtime-error str)
+  (dbg-printf "runtime error: ~a\n" str)
   (set! current-stack-depth -1)
   (card-function I))
 
@@ -118,7 +119,7 @@
 						 func
                          (if (procedure? (stack-item-cont f)) 
                              5;;If its a procedure yay
-                             -1;;If its not nay
+                             0;;If its not nay
                          )
 						 (if-stack-depth
 						  (lambda (state g)
@@ -132,28 +133,41 @@
 												func
                                                 (if (and (procedure? (stack-item-cont f)) (procedure? (stack-item-cont g)))  
                                                     6;;If its a procedure yay
-                                                    -1;;If its not nay
+                                                    0;;If its not nay
                                                 )
                                                 (if-stack-depth
 												 (lambda (state x)
                                                    (if (not (procedure? (stack-item-cont f)))
-                                                       (cons state (runtime-error "fnure"))
+                                                       (cons state (runtime-error "S got value; expected function (f)"))
                                                        (let* ((fx ((stack-item-cont f) state x))
-														  (fx-state (car fx))
-														  (fx-frame (cdr fx))
-														  (gx ((stack-item-cont g) fx-state x))
-														  (gx-state (car gx))
-														  (gx-frame (cdr gx)))
-													 ((stack-item-cont fx-frame) state gx-frame)))))
-                                                 (if-stack-depth
-                                                  (lambda (state x)
-                                                    (let* ((fx ((stack-item-zcont f) state x))
-                                                           (fx-state (car fx))
-                                                           (fx-frame (cdr fx))
-                                                           (gx ((stack-item-zcont g) fx-state x))
-                                                           (gx-state (car gx))
-                                                           (gx-frame (cdr gx)))
-                                                      ((stack-item-zcont fx-frame) state gx-frame)))))))))))))
+                                                              (fx-state (car fx))
+                                                              (fx-frame (cdr fx)))
+                                                         (if (not (procedure? (stack-item-cont g)))
+                                                             (cons state (runtime-error "g is not a function in S"))
+                                                             (let*
+                                                                 ((gx ((stack-item-cont g) fx-state x))
+                                                                  (gx-state (car gx))
+                                                                  (gx-frame (cdr gx)))
+                                                               (if (not (procedure? (stack-item-cont fx-frame)))
+                                                                   (cons state (runtime-error "f(x) is not a function in S"))
+                                                                   ((stack-item-cont fx-frame) state gx-frame))))))))
+                                                (if-stack-depth
+												 (lambda (state x)
+                                                   (if (not (procedure? (stack-item-zcont f)))
+                                                       (cons state (runtime-error "f is not function in S"))
+                                                       (let* ((fx ((stack-item-zcont f) state x))
+                                                              (fx-state (car fx))
+                                                              (fx-frame (cdr fx)))
+                                                         (if (not (procedure? (stack-item-cont g)))
+                                                             (cons state (runtime-error "g is not a function in S"))
+                                                             (let*
+                                                                 ((gx ((stack-item-zcont g) fx-state x))
+                                                                  (gx-state (car gx))
+                                                                  (gx-frame (cdr gx)))
+                                                               (if (not (procedure? (stack-item-zcont fx-frame)))
+                                                                   (cons state (runtime-error "f(x) is not a function in S"))
+                                                                   ((stack-item-zcont fx-frame) state gx-frame))))))))
+                                                )))))))))
 
 (define S (make-card "S"
 					 (make-stack-item "S"
