@@ -6,6 +6,7 @@
 (use srfi-9)
 (use srfi-1)
 (use extras)
+(use vector-lib)
 
 (define-record-type :move
   (make-move type card slot)
@@ -153,6 +154,7 @@
   (if (equal? -1 current-stack-depth) (cons (car result) (card-function I)) result))
 
 (define (eval-card-to-slot state card slot)
+  (set! current-stack-depth 0)
 										;  (display "Got card to slot")
   (let* ((player-slot (player-field state them slot))
 		 (result (checkForError (if (procedure? (stack-item-cont (card-function card)))
@@ -165,6 +167,7 @@
 	(cons new-state read-action-type)))
 
 (define (eval-slot-to-card state slot card)
+  (set! current-stack-depth 0)
 										;  (display "Got slot to card")
   (let* ((player-slot (player-field state them slot))
 		 (result (checkForError (if (procedure? (stack-item-cont player-slot))
@@ -206,8 +209,8 @@
 
 (define (show-interesting-states p player)
   (printf "player: ~a\n" p)
-  (printf "current stack depth ~a\n" current-stack-depth)
-  (printf "current fitness value ~a\n" (fitness-of-player player))
+  (dbg-printf "current stack depth ~a\n" current-stack-depth)
+  (dbg-printf "current fitness value ~a\n" (fitness-of-player player))
   (vector-for-each (lambda (i slot)
                      (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
                                       (equal? (slot-vitality slot) 10000)))
@@ -220,18 +223,18 @@
 (define (vfe f lst)
   (map (lambda (x) (f (car x) (car (cdr x)))) (zip (gen-indices lst) lst)))
 
-(define (vector-for-each f vec)
-  (if (list? vec)
-	  (vfe f vec)
-	  (vfe f (vector->list vec))))
+;; (define (vector-for-each f vec)
+;;   (if (list? vec)
+;; 	  (vfe f vec)
+;; 	  (vfe f (vector->list vec))))
 
 (define (display-player-states state)
   (vector-for-each show-interesting-states state)
-  (printf "possible state walks are ~a\n" (state-space-bfs '() (possibilities-from-state state) 30)))
+  (fitness-dfs '() (possibilities-from-state state) 128 0))
 
 (define (go handler state)
   (let* ((input (read-line))
-		 (foo (printf "input: ~a\n" input))
+		 (foo (dbg-printf "input: ~a\n" input))
 		 (handler-result (handler state input))
 		 (next-state (car handler-result))
 		 (next-handler (cdr handler-result)))
@@ -284,21 +287,81 @@
   (not (equal? (stack-item-desc (slot-field slot))
 			   (card-name I))))
 
+(define (vector-dedup vec pred)
+  (list->vector
+   (delete-duplicates (vector->list vec)
+  					  pred)))
+
 (define (state-space-bfs visited new max-states)
-  (printf "new states: ~a   old states: ~a\n" (length new) (length visited))
-  (if (eq? 0 (length new)) (exit 1))
-  (let* ((new-states (fold (lambda (s acc)
-							 (append acc (possibilities-from-state (state-walk-state s))))
-						   '()
-						   new))
-		 (keep-states (filter (lambda (state-walk)
-								(not (member state-walk visited))) new-states))
-		 (now-visited (append visited new)))
-	(if (>= (+ (length now-visited) (length keep-states)) max-states)
-		(append now-visited keep-states)
-		(state-space-bfs now-visited keep-states max-states))))
-	
-  
+  (dbg-printf "new states: ~a   old states: ~a\n" (vector-length new) (vector-length visited))
+  (let* ((new-states
+		  (vector-dedup (vector-fold (lambda (i acc s)
+									   (if (or (>= (+ (vector-length visited)
+													  (vector-length acc)
+													  (vector-length new))
+												   max-states)
+											   (vector-any (lambda (x) (equal? (state-walk-state s) (state-walk-state x))) visited))
+										   acc
+										   (vector-append acc (list->vector (possibilities-from-state (state-walk-state s))))))
+									 (vector)
+									 new)
+						(lambda (x y) (equal? (state-walk-state x)
+											  (state-walk-state y)))))
+		 (now-visited (vector-append visited new)))
+	(if (>= (+ (vector-length now-visited) (vector-length new-states)) max-states)
+		(let ((result (vector-append now-visited new-states)))
+		  (dbg-printf "stopping with ~a states\n" (vector-length result))
+		  result)
+		(state-space-bfs now-visited new-states max-states))))
+
+(define (fitness-dfs old new keep depth)
+  (dbg-printf "depth: ~a\n" depth)
+  (if (<= keep 0)
+	  (append old new)
+	  (let* ((choices (apply append (map fitness-heuristic-search new)))
+			 (selection (take choices keep)))
+		(fitness-dfs (append old new)
+					 selection
+					 (floor (/ keep 2))
+					 (+ depth 1)))))
+
+(define (fitness-heuristic-search state)
+  (let* ((options (possibilities-from-state (state-walk-state state)))
+		 (indexed-options (zip (gen-indices options) options))
+		 (sorted-indexed-options (sort indexed-options (lambda (x y)
+														 (let* ((x-state (state-walk-state (cadr x)))
+																(y-state (state-walk-state (cadr y)))
+																(x-fit (state-fitness x-state))
+																(y-fit (state-fitness y-state)))
+														   (cond ((< x-fit y-fit) #t)
+																 ((> y-fit x-fit) #f)
+																 (else (< (car x) (car y))))))))
+		 (sorted-options (map (lambda (x)
+								(let ((state-walk (cadr x)))
+								  (state-walk-k! state-walk
+												 (append (state-walk-k state)
+														 (state-walk-k state-walk)))
+								  state-walk))
+							  sorted-indexed-options)))
+	sorted-options))
+
+(define (state-fitness state)
+  (let* ((fitness-folder (lambda (i acc cur)
+						   (let ((vitality (car acc))
+								 (happiness (car (cdr acc)))
+								 (sadness (car (cdr (cdr acc))))
+								 (cur-vitality (slot-vitality cur))
+								 (cur-happiness (stack-item-happyness (slot-field cur))))
+							 (list (+ vitality cur-vitality)
+								   (if (> cur-vitality 0) (+ happiness cur-happiness) happiness)
+								   (if (< cur-vitality 0) (+ sadness cur-happiness) sadness)))))
+		 (my-state (vector-ref state me))
+		 (their-state (vector-ref state them))
+		 (my-fitness (vector-fold fitness-folder '(0 0 0) my-state))
+		 (their-fitness (vector-fold fitness-folder '(0 0 0) their-state))
+		 (my-utility (+ (car my-fitness) (car (cdr my-fitness)) (car (cdr (cdr their-fitness)))))
+		 (their-utility (+ (car their-fitness) (car (cdr their-fitness)) (car (cdr (cdr my-fitness))))))
+	(- my-utility their-utility)))
 
 (define (possibilities-from-state-d state maxdepth)
   (if (equal? maxdepth 1)
@@ -318,24 +381,31 @@
        (measlistindex (zip (gen-indices measlist) measlist))
        (dedupme (delete-duplicates measlistindex (lambda (x y) (equal? (cdr x)
 																	   (cdr y))))))
-    (delete-duplicates (concatenate! (map (lambda (slot)  
-                                            (concatenate!
-											 (map
-											  (lambda (card)
-												(list (make-state-walk (list (make-move 'cs
-																						(car slot)
-																						card))
-																	   (car (eval-card-to-slot state
-																							   card
-																							   (car slot))))
-													  (make-state-walk (list (make-move 'sc
-																						(car slot) 
-																						card))
-																	   (car (eval-slot-to-card state
-																							   (car slot)
-																							   card)))))
-											  cards)))
-										  dedupme))
+    (delete-duplicates (filter state-walk?
+							   (concatenate! (map (lambda (slot)  
+													(concatenate!
+													 (map
+													  (lambda (card)
+														(list (if
+															   (not (equal? card zero))
+															   (make-state-walk (list (make-move 'cs
+																								 (car slot)
+																								 card))
+																				(car (eval-card-to-slot state
+																										card
+																										(car slot))))
+															   '())
+															  (if
+															   (procedure? (stack-item-cont (player-field state me (car slot))))
+															   (make-state-walk (list (make-move 'sc
+																								 (car slot) 
+																								 card))
+																				(car (eval-slot-to-card state
+																										(car slot)
+																										card)))
+															   '())))
+													  cards)))
+												  dedupme)))
 					   (lambda (x y) (equal? (state-walk-state x)
 											 (state-walk-state y))))))
 
