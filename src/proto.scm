@@ -456,10 +456,11 @@
   (let*
       ((playeraslist (vector->list player))
        (nonZombieSlots (filter (lambda (s) (not (is-zombie-slot s))) playeraslist))
+       (nonDeadSlots (filter (lambda (s) (not (is-dead-slot s))) nonZombieSlots))
        (alive (count is-dead-slot playeraslist))
        (zombieCount (count is-zombie-slot playeraslist))
        (cardPresentCount (count has-fun-card nonZombieSlots))
-       (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 nonZombieSlots))
+       (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 (delete-duplicates nonDeadSlots (lambda (x y) (equal? (slot-field x) (slot-field y))))))
        (zombieCardPresentCount (count has-fun-card (filter (lambda (s) (is-zombie-slot s)) playeraslist)))
        (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)) 
        (vitalities (map (lambda (x) (slot-vitality x)) playeraslist))

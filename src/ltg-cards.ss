@@ -268,7 +268,9 @@
 	  state
 	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
 						 func
-                         4;;happyness of 4
+                         (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)))
+                             4;;happyness of 4
+                             -1)
 						 (if-stack-depth
 						  (lambda (state j)
 							(cons
@@ -279,7 +281,11 @@
 															   (stack-item-desc j)
 															   ")")
 												func
-                                                5;;happyness of 5
+                                                (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)) 
+                                                         (stack-item-val? j) (valid-slot-id? (stack-item-cont j)))
+                                                    5;;happyness of 5
+                                                    -1
+                                                )
 												(if-stack-depth
 												 (lambda (state n)
 												   (if (or (not (stack-item-val? i)) 
@@ -369,7 +375,10 @@
 	  state
 	  (make-r-stack-item (string-append "help(" (stack-item-desc i) ")")
 						 func
+                         (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)))
                          4;;happyness of 4
+                         -1
+                         )
 						 (if-stack-depth
 						  (lambda (state j)
 							(cons
@@ -380,7 +389,12 @@
 															   (stack-item-desc j)
 															   ")")
 												func
+                                                (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)) 
+                                                         (stack-item-val? j) (valid-slot-id? (stack-item-cont j))
+                                                         )
                                                 5;;happyness of 5
+                                                -1
+                                                )
 												(if-stack-depth
 												 (lambda (state n)
 												   (cond
@@ -590,14 +604,17 @@
   (make-card "zombie"
 			 (make-r-stack-item "zombie"
 								func
-                                4;;happyness of 4
+                                3;;happyness of 3
 								(if-stack-depth
 								 (lambda (state i)
 								   (cons
 									state
 									(make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
 													   func
-                                                       5;;happyness of 5
+                                                       (if (stack-item-val? i)
+                                                       4;;happyness of 4
+                                                       -1;;Sad if its a function cause asplode
+                                                       )
 													   (if-stack-depth
 														(lambda (state x)
 														  (cond
