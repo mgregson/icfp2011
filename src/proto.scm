@@ -461,8 +461,10 @@
        (cardPresentCount (count has-fun-card nonZombieSlots))
        (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 nonZombieSlots))
        (zombieCardPresentCount (count has-fun-card (filter (lambda (s) (is-zombie-slot s)) playeraslist)))
-       (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)))
-    (- (+ (* 6000 alive) (* 1 cardPresentCount) (* 40 vitality) (* 10 happyness))
+       (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)) 
+       (vitalities (map (lambda (x) (slot-vitality x)) playeraslist))
+       )
+    (- (+ (* 6000 alive) (* 0 cardPresentCount) (* 40 vitality) (* 1 happyness) (* 80 (fold min 99999 vitalities) ) )
        (+ (* 10 zombieCount) (* 50 zombieCardPresentCount)))))
 
 (define (pick-best-path paths)

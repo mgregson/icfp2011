@@ -121,7 +121,10 @@
 	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
 						 func
                          (if (procedure? (stack-item-cont f)) 
-                             5;;If its a procedure yay
+                             (if (equal? (stack-item-desc f) "I")
+                                 1
+                                 5;;If its a procedure yay
+                             )
                              0;;If its not nay
                          )
 						 (if-stack-depth
@@ -135,7 +138,10 @@
 															   ")")
 												func
                                                 (if (and (procedure? (stack-item-cont f)) (procedure? (stack-item-cont g)))  
-                                                    6;;If its a procedure yay
+                                                    (if (or (equal? (stack-item-desc f) "I") (equal? (stack-item-desc g) "I"))
+                                                        1
+                                                        5;;If its a procedure yay
+                                                    )
                                                     0;;If its not nay
                                                 )
                                                 (if-stack-depth
@@ -251,7 +257,7 @@
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
-                                        3;;happyness of 3
+                                        4;;happyness of 4
 										decFunc
                                         decFuncZombie)))
 
