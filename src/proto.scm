@@ -117,6 +117,7 @@
   (printf "1\n~a\n~a\n"
 		  (card-name card)
 		  (number->string slot))
+  (flush-output)
   (car (eval-card-to-slot state card slot me)))
 
 
@@ -127,6 +128,7 @@
   (printf "2\n~a\n~a\n"
 		  (number->string slot)
 		  (card-name card))
+  (flush-output)
   (car (eval-slot-to-card state slot card me)))
 
 (define (astc state slot card)
