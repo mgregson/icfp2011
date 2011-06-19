@@ -11,11 +11,14 @@
   (function card-function card-function!))
 
 (define (runtime-error str)
-  (dbg-printf "runtime error: ~a\n" str)
+  (err-printf "runtime error: ~a\n" str)
   (set! current-stack-depth -1)
   (card-function I))
 
 (define (dbg-printf . params)
+  (apply printf params))
+
+(define (err-printf . params)
   (apply printf params))
 
 (define Ifun (if-stack-depth (lambda (state x) (cons state x))))
@@ -45,8 +48,8 @@
    												val
                                                 2;;happyness of 2 [same for all values]
 												new))))
-                         (else (dbg-printf "succ expects a value\n")
-                               (cons state (runtime-error "succ expects value")))) )))
+                         (else
+						  (cons state (runtime-error "succ expects value")))) )))
 
 (define succ (make-card "succ"
                         (make-stack-item "succ"
@@ -67,8 +70,8 @@
 												val
                                                 2;;happyness of 2 [same for all values]
 												new))))
-                         (else (dbg-printf "dbl expects a value\n")
-                               (cons state (runtime-error "dbl expects value")))))))
+                         (else
+						  (cons state (runtime-error "dbl expects value")))))))
 
 (define dbl (make-card "dbl"
 					   (make-stack-item "dbl"
@@ -85,10 +88,10 @@
                             (cond ((valid-slot-id? input)
                                    (let ((result (player-field state current-player input)))
 									 (cons state result)))
-                                  (else (dbg-printf "get expects valid slot id")
-                                        (cons state (runtime-error "get expects valid slot id"))))))
-                         (else (dbg-printf "get expects a value\n")
-                               (cons state (runtime-error "get expects value")))))))
+                                  (else
+								   (cons state (runtime-error "get expects valid slot id"))))))
+                         (else
+						  (cons state (runtime-error "get expects value")))))))
 
 (define get (make-card "get"
 					   (make-stack-item "get"
