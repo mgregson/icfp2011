@@ -574,12 +574,12 @@
 																   (vitality (player-vitality state other-player idx)))
 															  (cond
 															   ((not (valid-slot-id? idx))
-																(cons state runtime-error "zombie got invalid slot id (255-i)")))
+																(cons state (runtime-error "zombie got invalid slot id (255-i)")))
 															   ((> vitality 0)
-																(cons state (card-function I)))
+																(cons state (runtime-error "zombie for live slot id (255-i)")))
 															   (else
 																(let* ((state-1 (player-vitality! state other-player idx -1))
 																	   (state-2 (player-field! state-1 other-player idx x)))
-																  (cons state-2 (card-function I))))))))))))))))
+																  (cons state-2 (card-function I)))))))))))))))))
 
 (define cards (list I zero succ dbl get put S K inc dec attack help copy revive zombie))
