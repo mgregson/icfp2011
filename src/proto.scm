@@ -315,7 +315,9 @@
 
 (define (possibilities-from-state-d state maxdepth)
   (delete-duplicates 
-   (append (heuristicSearch state (+ 2 maxdepth) 1) (depthfirst state maxdepth 1))
+   (append 
+    (list );;(heuristicSearch state (+ 2 maxdepth) 1) 
+    (depthfirst state maxdepth 1))
    (lambda (x y) (equal? (state-walk-state x)
                          (state-walk-state y)))
    )  
@@ -324,7 +326,9 @@
   (let ((newstates (possibilities-from-state  state)))
     (if (equal? curdepth maxdepth) newstates
         (fold append (list ) (map 
-                              (lambda (curstatewalk) (depthfirst (state-walk-state curstatewalk) maxdepth (+ 1 curdepth)))
+                              (lambda (curstatewalk) (map (lambda (x)
+                                                            (state-walk-k! x (append (state-walk-k curstatewalk) (state-walk-k x)))
+                                                            x) (depthfirst (state-walk-state curstatewalk) maxdepth (+ 1 curdepth))))
                               newstates
                               ))
         )
