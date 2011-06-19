@@ -227,7 +227,10 @@
 
 (define (display-player-states state)
   (vector-for-each show-interesting-states state)
-  (printf "possible state walks are ~a\n" (state-space-bfs '() (possibilities-from-state state) 30)))
+  (printf "possible state walks are ~a\n" 
+          (possibilities-from-state-d state 3)
+          ;;(state-space-bfs '() (possibilities-from-state state) 30) 
+))
 
 (define (go handler state)
   (let* ((input (read-line))
@@ -303,23 +306,38 @@
 (define (possibilities-from-state-d state maxdepth)
   (if (equal? maxdepth 1)
       (possibilities-from-state state)
+      (flatten 
       (map (lambda (cur-state-walk) 
-             (let ((possibilites (possibilities-from-state-d (state-walk-state cur-state-walk)
-															 (- maxdepth 1))))
-               (map (lambda (x)
+             (let* ((possibilites (possibilities-from-state-d (state-walk-state cur-state-walk)
+															 (- maxdepth 1))) 
+                    (fnar (delete-duplicates 
+                                             (lambda (x y) (equal? (state-walk-state x)
+											 (state-walk-state y)))
+                                             )
+                    )
+                    (append fnar (map (lambda (x)
 					  (state-walk-k! x (append (state-walk-k cur-state-walk)
-											   (state-walk-k x))))
-                    possibilites)))
-           (possibilities-from-state state))))
-
+											   (state-walk-k x)))
+                      x
+                      )
+                    ;;possibilites
+                    fnar
+                    ))))
+           (possibilities-from-state state)))))
+(define (flatten x)
+    (cond ((null? x) '())
+          ((not (pair? x)) (list x))
+          (else (append (flatten (car x))
+                        (flatten (cdr x))))))
+ 
 (define (possibilities-from-state state)
   (let*
       ((measlist (vector->list (vector-ref state me)) )
        (measlistindex (zip (gen-indices measlist) measlist))
        (dedupme (delete-duplicates measlistindex (lambda (x y) (equal? (cdr x)
 																	   (cdr y))))))
-    (delete-duplicates (concatenate! (map (lambda (slot)  
-                                            (concatenate!
+    (delete-duplicates (concatenate (map (lambda (slot)  
+                                            (concatenate
 											 (map
 											  (lambda (card)
 												(list (make-state-walk (list (make-move 'cs
