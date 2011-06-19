@@ -2,7 +2,7 @@ CSCFLAGS = -O2
 
 CSC = csc $(CSCFLAGS)
 
-TARGETS = debug echobot run holden mike
+TARGETS = debug echobot run holden mike combined
 
 PROTO_OBJECTS = src/proto.o src/ltg-cards.o src/ltg-stack.o
 
@@ -22,6 +22,9 @@ holden: $(PROTO_OBJECTS) src/holden.o
 	$(CSC) -o $@ $^
 
 mike: $(PROTO_OBJECTS) src/mike.o
+	$(CSC) -o $@ $^
+
+combined: $(PROTO_OBJECTS) src/combined.o
 	$(CSC) -o $@ $^
 
 echobot: src/echobot.o

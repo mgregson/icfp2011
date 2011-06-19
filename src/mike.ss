@@ -6,8 +6,9 @@
    (pick-best-path
 	(fitness-dfs '()
 				 (possibilities-from-state state)
-				 128
-				 0))))
+				 96
+				 0
+				 fitness-of-state))))
 
 (define (err-printf . params)
   '())

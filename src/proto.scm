@@ -223,7 +223,7 @@
 
 (define (show-interesting-states p player)
   (printf "player: ~a\n" p)
-  (dbg-printf "current stack depth ~a\n" current-stack-depth)
+;  (dbg-printf "current stack depth ~a\n" current-stack-depth)
   (dbg-printf "current fitness value ~a\n" (fitness-of-player player))
   (vector-for-each (lambda (i slot)
                      (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
@@ -288,7 +288,7 @@
 
 (define (fitness-of-state state)
   (- (fitness-of-player (vector-ref state me))
-     (* 2 (fitness-of-player (vector-ref state them)))))
+     (* 1.5 (fitness-of-player (vector-ref state them)))))
 
 (define (is-dead-slot slot)
   (< (slot-vitality slot) 1))
@@ -327,18 +327,22 @@
 		  result)
 		(state-space-bfs now-visited new-states max-states))))
 
-(define (fitness-dfs old new keep depth)
+(define retention-decay 1.5)
+
+(define (fitness-dfs old new keep depth h)
+  (dbg-printf "depth: ~a  keep: ~a\n" depth keep)
   (if (<= keep 0)
 	  (append old new)
-	  (let* ((choices (apply append (map fitness-heuristic-search new)))
+	  (let* ((choices (apply append (map (lambda (s) (fitness-heuristic-search s h)) new)))
 			 (selection (take choices keep)))
 		(fitness-dfs (append old new)
 					 selection
-					 (inexact->exact (floor (/ keep 2)))
-					 (+ depth 1)))))
+					 (inexact->exact (floor (/ keep retention-decay)))
+					 (+ depth 1)
+					 h))))
 
-(define (fitness-heuristic-search state)
-  (let* ((fitness fitness-of-state)
+(define (fitness-heuristic-search state h)
+  (let* ((fitness h)
 		 (options (possibilities-from-state (state-walk-state state)))
 		 (indexed-options (zip (gen-indices options) options))
 		 (sorted-indexed-options (sort indexed-options (lambda (x y)
@@ -346,8 +350,8 @@
 																(y-state (state-walk-state (cadr y)))
 																(x-fit (fitness x-state))
 																(y-fit (fitness y-state)))
-														   (cond ((< x-fit y-fit) #t)
-																 ((> y-fit x-fit) #f)
+														   (cond ((> x-fit y-fit) #t)
+																 ((< y-fit x-fit) #f)
 																 (else (< (car x) (car y))))))))
 		 (sorted-options (map (lambda (x)
 								(let ((state-walk (cadr x)))
@@ -465,8 +469,8 @@
        (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)) 
        (vitalities (map (lambda (x) (slot-vitality x)) playeraslist))
        )
-    (- (+ (* 6000 alive) (* 0 cardPresentCount) (* 40 vitality) (* 1 happyness) (* 80 (fold min 99999 vitalities) ) )
-       (+ (* 10 zombieCount) (* 50 zombieCardPresentCount)))))
+    (- (+ (* 6000 alive) (* 0 cardPresentCount) (* 40 vitality) (* 2 happyness) (* 80 (fold min 99999 vitalities) ) )
+       (+ (* 10 zombieCount) (* 25 zombieCardPresentCount)))))
 
 (define (pick-best-path paths)
   (fold

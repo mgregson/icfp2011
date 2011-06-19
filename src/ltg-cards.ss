@@ -46,7 +46,7 @@
 							 state
 							 (make-r-stack-item (number->string new)
    												val
-                                                2;;happyness of 2 [same for all values]
+                                                (* 1.5 new);;happyness of 2 [same for all values]
 												new))))
                          (else
 						  (cons state (runtime-error "succ expects value")))) )))
@@ -54,7 +54,7 @@
 (define succ (make-card "succ"
                         (make-stack-item "succ"
                                          func
-                                         3;;happyness of 3
+                                         2;;happyness of 3
                                          succFun
                                          succFun
                                          )))
@@ -76,7 +76,7 @@
 (define dbl (make-card "dbl"
 					   (make-stack-item "dbl"
 										func
-                                        3;;happyness of 3
+                                        1;;happyness of 3
 										dblFunc
 										dblFunc
 										)))
@@ -96,7 +96,7 @@
 (define get (make-card "get"
 					   (make-stack-item "get"
 										func
-                                        3;;happyness of 3
+                                        1;;happyness of 3
 										getFunc
 										getFunc
 										)))
@@ -108,7 +108,7 @@
 (define put (make-card "put"
                        (make-stack-item "put"
                                         func
-                                        3;;happyness of 3
+                                        1;;happyness of 3
                                         putFunc
                                         putFunc
                                         )))
@@ -140,7 +140,7 @@
                                                 (if (and (procedure? (stack-item-cont f)) (procedure? (stack-item-cont g)))  
                                                     (if (or (equal? (stack-item-desc f) "I") (equal? (stack-item-desc g) "I"))
                                                         1
-                                                        5;;If its a procedure yay
+                                                        10;;If its a procedure yay
                                                     )
                                                     0;;If its not nay
                                                 )
@@ -181,7 +181,7 @@
 (define S (make-card "S"
 					 (make-stack-item "S"
 									  func
-                                      4;;happyness of 4
+                                      2;;happyness of 4
                                       sFunc
                                       sFunc
                                       )))
@@ -219,7 +219,7 @@
 (define inc (make-card "inc"
 					   (make-stack-item "inc"
 										func
-                                        3;;happyness of 3
+                                        1;;happyness of 3
 										incFunc incFuncZombie)))
 
 (define decFunc
@@ -257,7 +257,7 @@
 (define dec (make-card "dec"
 					   (make-stack-item "dec"
 										func
-                                        4;;happyness of 4
+                                        1;;happyness of 4
 										decFunc
                                         decFuncZombie)))
 
@@ -266,7 +266,7 @@
    (lambda (state i)
 	 (cons
 	  state
-	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
+	  (make-r-stack-item (string-append "attack(" (stack-item-desc i) ")")
 						 func
                          (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)))
                              4;;happyness of 4
@@ -319,7 +319,7 @@
    (lambda (state i)
 	 (cons
 	  state
-	  (make-r-stack-item (string-append "attack" (stack-item-desc i) ")")
+	  (make-r-stack-item (string-append "attack(" (stack-item-desc i) ")")
 						 func
                          -5;;happyness of -5
 						 (if-stack-depth
@@ -332,7 +332,7 @@
 															   (stack-item-desc j)
 															   ")")
 												func
-                                                -6;;happyness of -6
+                                                -7;;happyness of -6
 												(if-stack-depth
 												 (lambda (state n)
 												   (if (or (not (stack-item-val? i)) 
@@ -364,7 +364,7 @@
 (define attack (make-card "attack"
 						  (make-stack-item "attack"
 										   func
-                                           3 ;; happyness of 3
+                                           1 ;; happyness of 3
 										   attackFunc
 										   attackFunc)))
 
@@ -392,8 +392,8 @@
                                                 (if (and (stack-item-val? i) (valid-slot-id? (stack-item-cont i)) 
                                                          (stack-item-val? j) (valid-slot-id? (stack-item-cont j))
                                                          )
-                                                5;;happyness of 5
-                                                -1
+													5;;happyness of 5
+													-1
                                                 )
 												(if-stack-depth
 												 (lambda (state n)
@@ -452,7 +452,7 @@
 															  (stack-item-desc j)
 															  ")")
 											   func
-                                               -5;;happyness of -5
+                                               -7;;happyness of -5
 											   (if-stack-depth
 												(lambda (state n)
 												  (cond
@@ -495,7 +495,7 @@
 (define help (make-card "help"
 						(make-stack-item "help"
 										 func
-                                         4;;happyness of 4
+                                         2;;happyness of 4
                                          helpFunc helpFuncZombie)))
 
 (define kFunc (if-stack-depth
@@ -507,10 +507,11 @@
 									  (stack-item-desc f)
 									  ")")
 									 func
-                                     3;;happyness of 3
+									 (stack-item-happyness f)
 									 (if-stack-depth
 									  (lambda (state g)
 										(cons state f))))))))
+
 (define kFuncZombie (if-stack-depth
 					 (lambda (state f)
 					   (cons
@@ -520,7 +521,7 @@
 											(stack-item-desc f)
 											")")
 										   func
-                                           3;;happyness of 3
+                                           (stack-item-happyness f)
 										   (if-stack-depth
 											(lambda (state g)
 											  (cons state f))))))))
@@ -528,7 +529,7 @@
 (define K (make-card "K"
 					 (make-stack-item "K"
 									  func
-                                      3;;happyness of 3
+                                      0;;happyness of 3
 									  kFunc kFuncZombie)))
 
 (define copyFunc
@@ -555,7 +556,7 @@
 (define copy (make-card "copy"
 						(make-stack-item "copy"
 										 func
-                                         3;;happyness of 3
+                                         1;;happyness of 3
                                          copyFunc
                                          copyFuncZombie)))
 
@@ -595,7 +596,7 @@
   (make-card "revive"
 			 (make-stack-item "revive"
 							  func
-                              3;;happyness of 3
+                              1;;happyness of 3
                               reviveFunc
                               reviveFuncZombie
 							  )))
@@ -612,8 +613,8 @@
 									(make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
 													   func
                                                        (if (stack-item-val? i)
-                                                       4;;happyness of 4
-                                                       -1;;Sad if its a function cause asplode
+														   4;;happyness of 4
+														   -1;;Sad if its a function cause asplode
                                                        )
 													   (if-stack-depth
 														(lambda (state x)
