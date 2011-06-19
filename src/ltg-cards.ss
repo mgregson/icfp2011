@@ -116,7 +116,10 @@
 	  state
 	  (make-r-stack-item (string-append "S(" (stack-item-desc f) ")")
 						 func
-                         5;;happyness of 5
+                         (if (procedure? (stack-item-cont f)) 
+                             5;;If its a procedure yay
+                             -1;;If its not nay
+                         )
 						 (if-stack-depth
 						  (lambda (state g)
 							(cons
@@ -127,16 +130,21 @@
 															   (stack-item-desc g)
 															   ")")
 												func
-                                                6;;happyness of 6
-												(if-stack-depth
+                                                (if (and (procedure? (stack-item-cont f)) (procedure? (stack-item-cont g)))  
+                                                    6;;If its a procedure yay
+                                                    -1;;If its not nay
+                                                )
+                                                (if-stack-depth
 												 (lambda (state x)
-												   (let* ((fx ((stack-item-cont f) state x))
+                                                   (if (not (procedure? (stack-item-cont f)))
+                                                       (cons state (runtime-error "fnure"))
+                                                       (let* ((fx ((stack-item-cont f) state x))
 														  (fx-state (car fx))
 														  (fx-frame (cdr fx))
 														  (gx ((stack-item-cont g) fx-state x))
 														  (gx-state (car gx))
 														  (gx-frame (cdr gx)))
-													 ((stack-item-cont fx-frame) state gx-frame)))) 
+													 ((stack-item-cont fx-frame) state gx-frame)))))
                                                  (if-stack-depth
                                                   (lambda (state x)
                                                     (let* ((fx ((stack-item-zcont f) state x))
