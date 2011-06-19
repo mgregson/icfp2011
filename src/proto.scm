@@ -8,6 +8,16 @@
 (use extras)
 (use vector-lib)
 
+(define (qsort e f)
+  (if (or (null? e) (<= (length e) 1)) e
+      (let loop ((left '()) (right '())
+                   (pivot (car e)) (rest (cdr e)))
+            (if (null? rest)
+                (append (append (qsort left f) (list pivot)) (qsort right f))
+               (if (>= (f (car rest)) (f pivot));;reverse of normal eh
+                    (loop (append left (list (car rest))) right pivot (cdr rest))
+                    (loop left (append right (list (car rest))) pivot (cdr rest)))))))
+
 (define-record-type :move
   (make-move type card slot)
   move?
@@ -229,8 +239,7 @@
 ;; 	  (vfe f (vector->list vec))))
 
 (define (display-player-states state)
-  (vector-for-each show-interesting-states state)
-  (fitness-dfs '() (possibilities-from-state state) 128 0))
+  (vector-for-each show-interesting-states state))
 
 (define (go handler state)
   (let* ((input (read-line))
@@ -364,17 +373,45 @@
 	(- my-utility their-utility)))
 
 (define (possibilities-from-state-d state maxdepth)
-  (if (equal? maxdepth 1)
-      (possibilities-from-state state)
-      (map (lambda (cur-state-walk) 
-             (let ((possibilites (possibilities-from-state-d (state-walk-state cur-state-walk)
-															 (- maxdepth 1))))
-               (map (lambda (x)
-					  (state-walk-k! x (append (state-walk-k cur-state-walk)
-											   (state-walk-k x))))
-                    possibilites)))
-           (possibilities-from-state state))))
-
+  (let ((results (delete-duplicates 
+   (append 
+    (heuristicSearch state (+ 2 maxdepth) 1) 
+    (depthfirst state maxdepth 1))
+   (lambda (x y) (equal? (state-walk-state x)
+                         (state-walk-state y)))
+   )))
+  (set! current-stack-depth 0)
+  results
+  )
+)
+(define (depthfirst state maxdepth curdepth)
+  (let ((newstates (possibilities-from-state  state)))
+    (if (equal? curdepth maxdepth) newstates
+        (fold append (list ) (map 
+                              (lambda (curstatewalk) (map (lambda (x)
+                                                            (state-walk-k! x (append (state-walk-k curstatewalk) (state-walk-k x)))
+                                                            x) (depthfirst (state-walk-state curstatewalk) maxdepth (+ 1 curdepth))))
+                              newstates
+                              ))
+        )
+))
+(define (heuristicSearch state maxdepth curdepth)
+  (let* ((newstates (possibilities-from-state  state)) 
+        (newstatesScores (zip (map (lambda (s) (fitness-of-state (state-walk-state s))) newstates) newstates))
+        (newtoexplore (map cadr (take  (qsort newstatesScores car) (min 3 (length newstatesScores)) )) );;4 should be safe, but 3 to be cautious
+        )
+    (if (equal? curdepth maxdepth) newstates
+        (fold append newtoexplore (map (lambda (x) (map (lambda (j) (state-walk-k! j (append (state-walk-k x)
+                                                                                        (state-walk-k j)) )
+                                                           j) (heuristicSearch (state-walk-state x) maxdepth (+ 1 curdepth)))) newtoexplore)))
+        
+))
+(define (flatten x)
+    (cond ((null? x) '())
+          ((not (pair? x)) (list x))
+          (else (append (flatten (car x))
+                        (flatten (cdr x))))))
+ 
 (define (possibilities-from-state state)
   (let*
       ((measlist (vector->list (vector-ref state me)) )
