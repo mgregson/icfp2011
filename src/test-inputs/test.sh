@@ -13,7 +13,7 @@ FAILED=0
 for i in *.in
 do
   echo $i
-  ../../proto t < $i
+  ../../debug t < $i
   if [[ "$?" != "0" ]]; then
     FAILED=`echo $FAILED+1 | bc`
     FAILED_TESTS="$FAILED_TESTS\\n$i"
