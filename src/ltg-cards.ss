@@ -590,14 +590,17 @@
   (make-card "zombie"
 			 (make-r-stack-item "zombie"
 								func
-                                4;;happyness of 4
+                                3;;happyness of 3
 								(if-stack-depth
 								 (lambda (state i)
 								   (cons
 									state
 									(make-r-stack-item (string-append "zombie(" (stack-item-desc i) ")")
 													   func
-                                                       5;;happyness of 5
+                                                       (if (stack-item-val? i)
+                                                       4;;happyness of 4
+                                                       -1;;Sad if its a function cause asplode
+                                                       )
 													   (if-stack-depth
 														(lambda (state x)
 														  (cond
