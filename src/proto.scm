@@ -117,6 +117,7 @@
   (printf "1\n~a\n~a\n"
 		  (card-name card)
 		  (number->string slot))
+  (flush-output)
   (car (eval-card-to-slot state card slot me)))
 
 
@@ -127,6 +128,7 @@
   (printf "2\n~a\n~a\n"
 		  (number->string slot)
 		  (card-name card))
+  (flush-output)
   (car (eval-slot-to-card state slot card me)))
 
 (define (astc state slot card)
@@ -135,8 +137,8 @@
 (define (my-turn state)
   (set! current-stack-depth 0)
   (let ((state-1 (apply-zombies state me)))
-	(set! current-stack-depth 0)
-	(do-self-turn state-1)))
+  (set! current-stack-depth 0)
+  (do-self-turn state-1)))
 
 (define (do-self-turn state)
 										; (display "Do some shit"))
@@ -174,8 +176,9 @@
                                 ;;Ok?
                                 (cons state (card-function I)))
                   ))
-		 (new-state (player-field! (car result) player slot (cdr result))))
-	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
+		 (new-state (player-field! (car result) player slot (cdr result)))
+     (alt-state (if (= player them) (my-turn new-state) new-state)))
+	(cons alt-state (lambda (s line) (read-action-type alt-state line)))))
 
 (define (eval-slot-to-card state slot card player)
   (set! current-stack-depth 0)
@@ -188,8 +191,9 @@
                                     ;;Ok?
                                     (cons state (card-function I)))
                                     ))
-		 (new-state (player-field! (car result) player slot (cdr result))))
-	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
+		 (new-state (player-field! (car result) player slot (cdr result)))
+     (alt-state (if (= player them) (my-turn new-state) new-state)))
+	(cons alt-state (lambda (s line) (read-action-type alt-state line)))))
 
 (define (read-acts-card state card)
   (cons state
@@ -222,13 +226,13 @@
 	 (else (display "YOU FUCKING BASTARD") (cons state-1 read-action-type)))))
 
 (define (show-interesting-states p player)
-  (printf "player: ~a\n" p)
-;  (dbg-printf "current stack depth ~a\n" current-stack-depth)
+  (dbg-printf "player: ~a\n" p)
+  (dbg-printf "current stack depth ~a\n" current-stack-depth)
   (dbg-printf "current fitness value ~a\n" (fitness-of-player player))
   (vector-for-each (lambda (i slot)
                      (cond ((not (and (equal? (stack-item-desc (slot-field slot)) (card-name I))
                                       (equal? (slot-vitality slot) 10000)))
-                            (printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
+                            (dbg-printf "~a:{~a,~a}\n" i (slot-vitality slot) (stack-item-desc (slot-field slot))))))
                    player))
 
 (define (gen-indices lst)
@@ -258,7 +262,7 @@
   (cond ((not (equal? (length args) 1)) (printf "Usage: <fn> <player-number>\n") (exit 1))
         (else
          (let ((config-me (car args)))
-           (cond ((string=? config-me "0") (set! me 0) (set! them 1))
+           (cond ((string=? config-me "0") (set! me 0) (set! them 1) (set! players (my-turn players)))
                  ((string=? config-me "1") (set! me 1) (set! them 0))
                  ((string=? config-me "t") (set! me 0) (set! them 1) (set! test-interp-mode #t))
                  ((string=? config-me "n") (set! me 0) (set! them 1) (set! test-derp-mode #t))

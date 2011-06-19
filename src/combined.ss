@@ -38,4 +38,7 @@
 (define (err-printf . params)
   '())
 
+(define (dbg-printf . params)
+  '())
+
 (main (command-line-arguments))
