@@ -10,8 +10,6 @@
   (name card-name card-name!)
   (function card-function card-function!))
 
-(define func "function")
-(define val "value")
 (define (runtime-error str)
   (set! current-stack-depth -1)
   (card-function I))

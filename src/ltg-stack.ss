@@ -24,3 +24,6 @@
 		   (set! current-stack-depth -1)
 		   (cons state (card-function I)))
 		  (else (f state x)))))
+
+(define func "function")
+(define val "value")
