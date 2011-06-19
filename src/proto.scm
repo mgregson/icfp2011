@@ -7,6 +7,15 @@
 (use srfi-1)
 (use extras)
 
+(define-record-type :muruh
+  (make-muruh type slot card state)
+  muruh?
+  (type muruh-type muruh-type!)
+  (slot muruh-slot muruh-slot!)
+  (card muruh-card muruh-card!)
+  (state muruh-state muruh-state!)
+)
+
 (define-record-type :slot
   (make-slot field vitality)
   slot?
@@ -143,7 +152,11 @@
 (define (eval-card-to-slot state card slot)
 										;  (display "Got card to slot")
   (let* ((player-slot (player-field state them slot))
-		 (result (checkForError ((stack-item-cont (card-function card)) state player-slot)))
+		 (result (checkForError (if (procedure? (stack-item-cont (card-function card)))
+                  ((stack-item-cont (card-function card)) state player-slot) 
+                                ;;Ok?
+                                (cons state (card-function I)))
+                  ))
 		 (new-state (player-field! (car result) them slot (cdr result))))
 	(my-turn)
 	(cons new-state read-action-type)))
@@ -151,7 +164,11 @@
 (define (eval-slot-to-card state slot card)
 										;  (display "Got slot to card")
   (let* ((player-slot (player-field state them slot))
-		 (result (checkForError ((stack-item-cont player-slot) state (card-function card))))
+		 (result (checkForError (if (procedure? (stack-item-cont player-slot))
+                                    ((stack-item-cont player-slot) state (card-function card)) 
+                                    ;;Ok?
+                                    (cons state (card-function I)))
+                                    ))
 		 (new-state (player-field! (car result) them slot (cdr result))))
 	(my-turn)
 	(cons new-state read-action-type)))
@@ -206,7 +223,9 @@
 	  (vfe f (vector->list vec))))
 
 (define (display-player-states state)
-  (vector-for-each show-interesting-states state))
+  (vector-for-each show-interesting-states state)
+  (printf "possible muruh are ~a\n" (possibilities-from-state state))
+  )
 
 (define (go handler state)
   (let* ((input (read-line))
@@ -264,6 +283,22 @@
 (define (has-fun-card slot)
   (not (equal? (stack-item-desc (slot-field slot)) (card-name I)))
 )
+
+(define (possibilities-from-state state)
+  (let*
+      ((measlist (vector->list (vector-ref state me)) )
+       (measlistindex (zip (gen-indices measlist) measlist))
+       (dedupme (delete-duplicates measlistindex (lambda (x y) (equal? (cdr x) (cdr y)))))
+       )
+    (delete-duplicates (concatenate! (map (lambda (slot)  
+                                            (concatenate! (map (lambda (card) 
+                                                                 (list (make-muruh 'cs (car slot) card (car (eval-card-to-slot state card (car slot) )))
+                                                                       (make-muruh 'sc (car slot) card (car (eval-slot-to-card state (car slot) card)))) 
+                                                                 )
+                                                 cards))) dedupme)) (lambda (x y) (equal? (muruh-state x) (muruh-state y))))
+    )
+)
+
 (define (fitness-of-player player)
   (let*
       ((playeraslist (vector->list player))
