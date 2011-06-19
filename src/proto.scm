@@ -113,37 +113,37 @@
 	(slot-vitality! (vector-ref player-vector slot) value)
 	new-state))
 
-(define (apply-card-to-slot card slot)
-  (display (string-append
-			"1\n"
-			(card-name card)
-			"\n"
-			(number->string slot)
-			"\n")))
+(define (apply-card-to-slot state card slot)
+  (printf "1\n~a\n~a\n"
+		  (card-name card)
+		  (number->string slot))
+  (car (eval-card-to-slot state card slot me)))
 
-(define (acts card slot)
-  (apply-card-to-slot card slot))
 
-(define (apply-slot-to-card slot card)
-  (display (string-append
-            "2\n"
-            (number->string slot)
-            "\n"
-            (card-name card)
-            "\n")))
+(define (acts state card slot)
+  (apply-card-to-slot state card slot))
 
-(define (astc slot card)
-  (apply-slot-to-card slot card))
+(define (apply-slot-to-card state slot card)
+  (printf "2\n~a\n~a\n"
+		  (number->string slot)
+		  (card-name card))
+  (car (eval-slot-to-card state slot card me)))
 
-(define (my-turn)
+(define (astc state slot card)
+  (apply-slot-to-card state slot card))
+
+(define (my-turn state)
   (set! current-stack-depth 0)
-  (apply-zombies players me)
-  (set! current-stack-depth 0)
-  (do-self-turn))
+  (let ((state-1 (apply-zombies state me)))
+	(set! current-stack-depth 0)
+	(do-self-turn state-1)))
 
-(define (do-self-turn)
+(define (do-self-turn state)
 										; (display "Do some shit"))
-  '())
+  (apply-state-walk state
+					(pick-best-path
+					 (possibilities-from-state-d state 2))))
+;					 (fitness-dfs '() (possibilities-from-state state) 128 0))))
 
 (define (eval-zombie player)
   (lambda (slot state)
@@ -163,45 +163,49 @@
 (define (checkForError result)
   (if (equal? -1 current-stack-depth) (cons (car result) (card-function I)) result))
 
-(define (eval-card-to-slot state card slot)
+(define (eval-card-to-slot state card slot player)
   (set! current-stack-depth 0)
+  (set! current-player player)
+  (set! other-player (- 1 player))
 										;  (display "Got card to slot")
-  (let* ((player-slot (player-field state them slot))
+  (let* ((player-slot (player-field state player slot))
 		 (result (checkForError (if (procedure? (stack-item-cont (card-function card)))
                   ((stack-item-cont (card-function card)) state player-slot) 
                                 ;;Ok?
                                 (cons state (card-function I)))
                   ))
-		 (new-state (player-field! (car result) them slot (cdr result))))
-	(my-turn)
-	(cons new-state read-action-type)))
+		 (new-state (player-field! (car result) player slot (cdr result))))
+	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
 
-(define (eval-slot-to-card state slot card)
+(define (eval-slot-to-card state slot card player)
   (set! current-stack-depth 0)
+  (set! current-player player)
+  (set! other-player (- 1 player))
 										;  (display "Got slot to card")
-  (let* ((player-slot (player-field state them slot))
+  (let* ((player-slot (player-field state player slot))
 		 (result (checkForError (if (procedure? (stack-item-cont player-slot))
                                     ((stack-item-cont player-slot) state (card-function card)) 
                                     ;;Ok?
                                     (cons state (card-function I)))
                                     ))
-		 (new-state (player-field! (car result) them slot (cdr result))))
-	(my-turn)
-	(cons new-state read-action-type)))
+		 (new-state (player-field! (car result) player slot (cdr result))))
+	(cons new-state (lambda (s line) (read-action-type (my-turn s) line)))))
 
 (define (read-acts-card state card)
   (cons state
 		(lambda (state slot)
 		  (eval-card-to-slot state
 							 (name-to-card card)
-							 (string->number slot)))))
+							 (string->number slot)
+							 them))))
 
 (define (read-astc-slot state slot)
   (cons state
 		(lambda (state card)
 		  (eval-slot-to-card state
 							 (string->number slot)
-							 (name-to-card card)))))
+							 (name-to-card card)
+							 them))))
 
 (define (read-action-type state action)
   (if test-interp-mode (display-player-states state))
@@ -284,7 +288,7 @@
 
 (define (fitness-of-state state)
   (- (fitness-of-player (vector-ref state me))
-     (fitness-of-player (vector-ref state them))))
+     (* 2 (fitness-of-player (vector-ref state them)))))
 
 (define (is-dead-slot slot)
   (< (slot-vitality slot) 1))
@@ -331,7 +335,7 @@
 			 (selection (take choices keep)))
 		(fitness-dfs (append old new)
 					 selection
-					 (floor (/ keep 2))
+					 (inexact->exact (floor (/ keep 2)))
 					 (+ depth 1)))))
 
 (define (fitness-heuristic-search state)
@@ -426,20 +430,22 @@
 														(list (if
 															   (not (equal? card zero))
 															   (make-state-walk (list (make-move 'cs
-																								 (car slot)
-																								 card))
+																								 card
+																								 (car slot)))
 																				(car (eval-card-to-slot state
 																										card
-																										(car slot))))
+																										(car slot)
+																										me)))
 															   '())
 															  (if
 															   (procedure? (stack-item-cont (player-field state me (car slot))))
 															   (make-state-walk (list (make-move 'sc
-																								 (car slot) 
-																								 card))
+																								 card
+																								 (car slot)))
 																				(car (eval-slot-to-card state
 																										(car slot)
-																										card)))
+																										card
+																										me)))
 															   '())))
 													  cards)))
 												  dedupme)))
@@ -456,7 +462,7 @@
        (happyness (fold (lambda (x y) (+ (stack-item-happyness (slot-field x)) y)) 0 nonZombieSlots))
        (zombieCardPresentCount (count has-fun-card (filter (lambda (s) (is-zombie-slot s)) playeraslist)))
        (vitality (fold (lambda (x y) (+ (slot-vitality x) y)) 0 playeraslist)))
-    (- (+ (* 6000 alive) (* 10 cardPresentCount) vitality (* 100 happyness))
+    (- (+ (* 6000 alive) (* 0 cardPresentCount) (* 40 vitality) (* 2 happyness))
        (+ (* 10 zombieCount) (* 50 zombieCardPresentCount)))))
 
 (define (pick-best-path paths)
@@ -464,23 +470,27 @@
    (lambda (current best)
 	 (if (equal? best 'worst-path)
 		 current
-		 (let ((fitness-best (fitness-of-player (state-walk-state best)))
-			   (fitness-curr (fitness-of-player (state-walk-state current))))
+		 (let ((fitness-best (fitness-of-state (state-walk-state best)))
+			   (fitness-curr (fitness-of-state (state-walk-state current))))
 		   (cond ((> fitness-curr fitness-best)
 				  current)
 				 ((< fitness-curr fitness-best)
 				  best)
 				 (else
-				  (cond ((< (state-walk-k current) (state-walk-k best))
+				  (cond ((< (length (state-walk-k current)) (length (state-walk-k best)))
 						 current)
 						(else best)))))))
    'worst-path
    paths))
 
-(define (apply-state-walk state-walk)
+(define (apply-state-walk state state-walk)
+  (dbg-printf "target state: {\n")
+  (display-player-states (state-walk-state state-walk))
+  (dbg-printf "}\n")
+  (dbg-printf "target path: ~a\n" (map (lambda (x) (list (move-type x) (card-name (move-card x)) (move-slot x))) (state-walk-k state-walk)))
   (let ((move (car (state-walk-k state-walk))))
 	(cond ((equal? 'cs (move-type move))
-		   (acts (move-card move) (move-slot)))
+		   (acts state (move-card move) (move-slot move)))
 		  (else
-		   (astc (move-slot move) (move-card move))))))
+		   (astc state (move-slot move) (move-card move))))))
 
