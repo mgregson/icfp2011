@@ -4,11 +4,15 @@ CSC = csc $(CSCFLAGS)
 
 TARGETS = proto echobot
 
-PROTO_OBJECTS = src/proto.o src/ltg-cards.o src/ltg-stack.o src/runner.o
+PROTO_OBJECTS = src/proto.o src/ltg-cards.o src/ltg-stack.o
+
+TESTS = copy.test
 
 all: $(TARGETS)
 
-proto: $(PROTO_OBJECTS)
+test: $(TESTS)
+
+proto: $(PROTO_OBJECTS) src/runner.o
 	$(CSC) -o $@ $^
 
 echobot: src/echobot.o
@@ -17,6 +21,7 @@ echobot: src/echobot.o
 clean:
 	rm -f $(TARGETS)
 	rm -f $(PROTO_OBJECTS)
+	$(foreach i, $(TESTS), rm -f src/test/$(i); rm -f src/test/$(subst .test,.o,$i))
 
 %.o: %.ss
 	$(CSC) -c $<
@@ -25,3 +30,15 @@ clean:
 	$(CSC) -c $<
 
 .SILENT:
+
+.PHONY: all test $(TESTS)
+
+
+
+
+#########  TESTS HERE #########
+
+copy.test: $(PROTO_OBJECTS) src/test/copy.o
+	$(CSC) -o src/test/$@ $^
+	echo $(subst .test,,$@)":" `./src/test/$@`
+
